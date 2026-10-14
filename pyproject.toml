@@ -7,6 +7,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = []
+keywords = ["git", "co-author", "ai", "history", "cli"]
+
+[project.urls]
+Repository = "https://github.com/NaNIsaac/deai"
 
 [project.scripts]
 deai = "deai.cli:main"
