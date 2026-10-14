@@ -56,7 +56,42 @@ def test_rewrite():
         assert not git(repo, "status", "--porcelain")
 
 
+def test_push_never_loses_remote_commits():
+    """A local branch behind its remote must be fast-forwarded, not force-pushed backward."""
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        git(d, "init", "-q", "--bare", "-b", "main", "remote.git")
+        for name in ("a", "b"):
+            git(d, "clone", "-q", str(d / "remote.git"), name)
+            git(d / name, "config", "user.name", "Isaac Yong")
+            git(d / name, "config", "user.email", "isaac@example.com")
+        a, b = d / "a", d / "b"
+        (a / "f").write_text("1\n")
+        git(a, "add", "f")
+        git(a, "commit", "-q", "-m", "one\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+        git(a, "push", "-q", "origin", "main")
+        git(b, "pull", "-q", "origin", "main")       # b moves ahead; a stays behind
+        (b / "f").write_text("2\n")
+        git(b, "commit", "-q", "-am", "two (only on the remote)")
+        git(b, "push", "-q", "origin", "main")
+
+        assert clean(a, None, push=True) == 1
+        remote_log = git(d / "remote.git", "log", "--format=%s%n%b", "main")
+        assert "two (only on the remote)" in remote_log, remote_log   # not thrown away
+        assert "anthropic" not in remote_log.lower()
+
+        (b / "f").write_text("3\n")                  # diverge: b has stale history + a new commit
+        git(b, "commit", "-q", "-am", "three\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+        try:
+            clean(b, None, push=True)
+        except RuntimeError as e:
+            assert "diverged" in str(e)
+        else:
+            raise AssertionError("a diverged branch must stop the run")
+
+
 if __name__ == "__main__":
     test_messages()
     test_rewrite()
+    test_push_never_loses_remote_commits()
     print("deai: all checks passed")

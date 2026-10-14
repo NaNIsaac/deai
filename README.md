@@ -63,12 +63,9 @@ deai clean -r ~/code               # every repository found (shared ones skipped
 deai clean -r ~/code --yes --push  # no question; force-push afterwards
 ```
 
-**3. Publish.** Without `--push`, nothing leaves your machine. When you are happy with the result:
-
-```bash
-git push --force-with-lease --all
-git push --force --tags
-```
+**3. Publish.** Without `--push`, nothing leaves your machine. When you are happy with the result,
+run the same command again with `--push`. Do not use `git push --all`: it would also push stale
+local branches over newer remote ones.
 
 GitHub can take a while to refresh the Contributors list after the push.
 
@@ -98,8 +95,11 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
   ```bash
   git fetch --force .git/deai-backup-20261014-222005.bundle 'refs/*:refs/*'
   ```
-- **Only local refs are rewritten.** Remote-tracking refs keep the old history. That is what makes
-  `--force-with-lease` safe: the push fails if the remote moved since your last fetch.
+- **Pushes never lose remote commits.** `--push` fetches first.
+  - A local branch that is behind its remote is fast-forwarded before the rewrite.
+  - A branch that has diverged from its remote stops the run.
+  - Each branch is force-pushed with an explicit lease on the commit seen at fetch time.
+  - Only branches with an upstream are pushed; local-only branches stay local.
 - **Forks are protected.** A repository whose flagged commits were written by other people is
   marked `shared` and skipped. Rewriting it would split your fork from upstream.
 
@@ -178,12 +178,9 @@ deai clean -r ~/code               # 찾은 저장소 전부 (shared는 제외)
 deai clean -r ~/code --yes --push  # 확인 없이, 끝나면 force-push까지
 ```
 
-**3. GitHub에 반영.** `--push`를 붙이지 않으면 내 컴퓨터 밖으로 아무것도 나가지 않습니다. 결과를 확인한 뒤:
-
-```bash
-git push --force-with-lease --all
-git push --force --tags
-```
+**3. GitHub에 반영.** `--push`를 붙이지 않으면 내 컴퓨터 밖으로 아무것도 나가지 않습니다. 결과를 확인한 뒤
+같은 명령에 `--push`를 붙여 다시 실행하세요. `git push --all`은 쓰지 마세요. 원격보다 뒤처진 로컬 브랜치까지
+덮어써서 원격의 최신 커밋이 사라질 수 있습니다.
 
 push한 뒤 GitHub의 Contributors 목록이 갱신되기까지 시간이 좀 걸릴 수 있습니다.
 
@@ -209,8 +206,11 @@ push한 뒤 GitHub의 Contributors 목록이 갱신되기까지 시간이 좀 �
   ```bash
   git fetch --force .git/deai-backup-20261014-222005.bundle 'refs/*:refs/*'
   ```
-- **로컬 브랜치와 태그만 바꿉니다.** 원격 추적 브랜치는 그대로 두기 때문에 `--force-with-lease`가
-  제대로 동작합니다. 그사이 원격이 바뀌었으면 push가 실패합니다.
+- **원격 커밋을 잃지 않습니다.** `--push`를 붙이면 먼저 fetch합니다.
+  - 원격보다 뒤처진 로컬 브랜치는 먼저 fast-forward합니다.
+  - 원격과 갈라진 브랜치가 있으면 멈춥니다.
+  - 브랜치마다 fetch 시점의 커밋을 lease로 걸어 force-push합니다.
+  - upstream이 있는 브랜치만 push하고, 로컬 전용 브랜치는 그대로 둡니다.
 - **fork는 보호합니다.** 다른 사람이 쓴 커밋이 걸린 저장소는 `shared`로 표시하고 건너뜁니다.
   다시 쓰면 upstream과 기록이 갈라지기 때문입니다.
 

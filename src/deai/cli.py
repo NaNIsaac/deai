@@ -175,9 +175,70 @@ def rewrite_stream(src, dst, ident: bytes) -> int:
     return changed
 
 
+@dataclass
+class Tracked:
+    branch: str        # local branch name
+    remote: str        # e.g. origin
+    remote_ref: str    # e.g. refs/heads/main on the remote
+    upstream: str      # e.g. refs/remotes/origin/main
+    oid: str = ""      # upstream commit at fetch time: the lease for the force-push
+
+
+def tracked_branches(repo: Path) -> list[Tracked]:
+    fmt = "%(refname:short)%00%(upstream:remotename)%00%(upstream:remoteref)%00%(upstream)"
+    out = []
+    for line in git(repo, "for-each-ref", f"--format={fmt}", "refs/heads").splitlines():
+        b, remote, rref, up = line.split("\x00")
+        oid = git(repo, "rev-parse", "-q", "--verify", up, check=False).strip() if up else ""
+        if remote and oid:                         # upstream configured and present after fetch
+            out.append(Tracked(b, remote, rref, up, oid))
+    return out
+
+
+def sync_with_remote(repo: Path) -> list[Tracked]:
+    """Fetch, and make sure no local branch is behind its upstream before rewriting.
+
+    A force-push of a branch that is *behind* the remote would throw the remote's newer
+    commits away, so a branch that is strictly behind is fast-forwarded first, and a branch
+    that has diverged stops the run.
+    """
+    git(repo, "fetch", "--all", "--quiet")
+    current = git(repo, "branch", "--show-current").strip()
+    tracked = tracked_branches(repo)
+    def is_ancestor(a: str, b: str) -> bool:
+        return subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b]).returncode == 0
+
+    for t in tracked:
+        if is_ancestor(t.upstream, t.branch):
+            continue                               # local contains the remote: fine
+        if not is_ancestor(t.branch, t.upstream):
+            raise RuntimeError(f"branch {t.branch} has diverged from {t.upstream}; reconcile it first")
+        if t.branch == current:
+            git(repo, "merge", "-q", "--ff-only", t.upstream)
+        else:
+            git(repo, "branch", "-q", "-f", t.branch, t.upstream)
+        print(f"  fast-forwarded {t.branch} to {t.upstream} (it was behind the remote)")
+    return tracked
+
+
+def push_rewritten(repo: Path, tracked: list[Tracked]) -> None:
+    """Force-push each tracked branch with an explicit lease on the commit seen at fetch time."""
+    if not tracked:
+        print("  no branch has an upstream; nothing to push")
+        return
+    for t in tracked:
+        git(repo, "push", "--quiet", f"--force-with-lease={t.remote_ref}:{t.oid}", t.remote,
+            f"refs/heads/{t.branch}:{t.remote_ref}")
+        print(f"  pushed {t.branch} -> {t.remote}/{t.remote_ref.removeprefix('refs/heads/')}")
+    for remote in sorted({t.remote for t in tracked}):
+        git(repo, "push", "--quiet", "--force", "--tags", remote)
+        print(f"  pushed tags -> {remote}")
+
+
 def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     if git(repo, "status", "--porcelain", "--untracked-files=no").strip():
         raise RuntimeError("uncommitted changes to tracked files; commit or stash them first")
+    tracked = sync_with_remote(repo) if push else []
     if as_ident is None:
         name, email = git(repo, "config", "user.name").strip(), git(repo, "config", "user.email").strip()
         as_ident = f"{name} <{email}>"
@@ -200,11 +261,9 @@ def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     print(f"  rewrote {changed} commit(s); backup: {backup}")
 
     if push:
-        for args in (("push", "--force-with-lease", "--all"), ("push", "--force", "--tags")):
-            print(f"  git {' '.join(args)}")
-            print(git(repo, *args), end="")
+        push_rewritten(repo, tracked)
     else:
-        print("  not pushed. To publish:  git push --force-with-lease --all && git push --force --tags")
+        print("  not pushed. Run again with --push to publish (it fetches first and never pushes a stale branch).")
     return changed
 
 
