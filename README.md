@@ -24,9 +24,10 @@ rewrites the history without them. Your code does not change.
 Requires Python 3.10+ and git. There are no other dependencies.
 
 ```bash
-uv tool install git+https://github.com/NaNIsaac/deai     # recommended
-# or
-pipx install git+https://github.com/NaNIsaac/deai
+pip install deai
+# or, as an isolated tool
+uv tool install deai     # recommended
+pipx install deai
 # or, from a local clone
 uv tool install -e .
 ```
@@ -147,9 +148,10 @@ GitHub는 이 줄을 읽어서 저장소의 **Contributors** 목록에 AI를 올
 Python 3.10 이상과 git만 있으면 됩니다. 다른 의존성은 없습니다.
 
 ```bash
-uv tool install git+https://github.com/NaNIsaac/deai     # 추천
-# 또는
-pipx install git+https://github.com/NaNIsaac/deai
+pip install deai
+# 또는 격리된 도구로
+uv tool install deai     # 추천
+pipx install deai
 # 또는 내려받은 폴더에서
 uv tool install -e .
 ```

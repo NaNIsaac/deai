@@ -5,17 +5,27 @@ description = "Find and remove AI co-author credits from git history"
 authors = [{ name = "Isaac Yong", email = "isaacyong@naver.com" }]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE*"]
 dependencies = []
 keywords = ["git", "co-author", "ai", "history", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Version Control :: Git",
+]
 
 [project.urls]
 Homepage = "https://github.com/NaNIsaac/deai"
 Repository = "https://github.com/NaNIsaac/deai"
+Issues = "https://github.com/NaNIsaac/deai/issues"
 
 [project.scripts]
 deai = "deai.cli:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
