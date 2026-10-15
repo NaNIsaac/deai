@@ -24,13 +24,16 @@ rewrites the history without them. Your code does not change.
 Requires Python 3.10+ and git. There are no other dependencies.
 
 ```bash
-pip install deai
+pip install git-deai
 # or, as an isolated tool
-uv tool install deai     # recommended
-pipx install deai
+uv tool install git-deai     # recommended
+pipx install git-deai
 # or, from a local clone
 uv tool install -e .
 ```
+
+The package is `git-deai`; the command it installs is `deai`.
+To try it without installing: `uvx --from git-deai deai --help`.
 
 ### Usage
 
@@ -148,13 +151,16 @@ GitHub는 이 줄을 읽어서 저장소의 **Contributors** 목록에 AI를 올
 Python 3.10 이상과 git만 있으면 됩니다. 다른 의존성은 없습니다.
 
 ```bash
-pip install deai
+pip install git-deai
 # 또는 격리된 도구로
-uv tool install deai     # 추천
-pipx install deai
+uv tool install git-deai     # 추천
+pipx install git-deai
 # 또는 내려받은 폴더에서
 uv tool install -e .
 ```
+
+패키지 이름은 `git-deai`이고, 설치되는 명령어는 `deai`입니다.
+설치 없이 써 보려면: `uvx --from git-deai deai --help`
 
 ### 사용법
 
