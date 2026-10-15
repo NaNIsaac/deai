@@ -210,6 +210,9 @@ push한 뒤 GitHub의 Contributors 목록이 갱신되기까지 시간이 좀 �
 - `🤖 Generated with [Claude Code](...)` 같은 "Generated with \<AI 도구\>" 줄
 - AI가 작성자나 커미터로 된 커밋. 이 커밋들은 내 이름으로 바꿉니다.
 
+대상 도구: Claude/Anthropic, GitHub Copilot, Cursor, ChatGPT/OpenAI/Codex, Gemini, Devin, Aider,
+Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
+
 ### 안전장치
 - **커밋 안 한 변경이 있으면 실행하지 않습니다.**
 - **먼저 백업합니다.** 모든 브랜치와 태그를 `.git/deai-backup-<시각>.bundle`로 저장합니다. 되돌리려면:
