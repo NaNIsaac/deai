@@ -1,5 +1,7 @@
 # deai
 
+[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **Remove AI co-author credits from your git history.**
 **git 기록에서 AI 공동저자 표시를 지웁니다.**
 
