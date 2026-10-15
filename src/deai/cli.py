@@ -195,29 +195,81 @@ def tracked_branches(repo: Path) -> list[Tracked]:
     return out
 
 
-def sync_with_remote(repo: Path) -> list[Tracked]:
-    """Fetch, and make sure no local branch is behind its upstream before rewriting.
+def is_ancestor(repo: Path, a: str, b: str) -> bool:
+    return subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b],
+                          check=False).returncode == 0
 
-    A force-push of a branch that is *behind* the remote would throw the remote's newer
-    commits away, so a branch that is strictly behind is fast-forwarded first, and a branch
-    that has diverged stops the run.
+
+def unique(repo: Path, base: str, head: str) -> int:
+    """Commits in ``head`` whose change is not in ``base`` under any hash (``git cherry``).
+
+    deai only edits messages, so a rewritten commit matches its original here.
+    """
+    return sum(line.startswith("+") for line in git(repo, "cherry", base, head).splitlines())
+
+
+def flagged(repo: Path, rev_range: str) -> int:
+    """Commits in ``rev_range`` that carry AI credits."""
+    log = git(repo, "log", rev_range, "--format=%an <%ae>%x00%cn <%ce>%x00%B%x1e")
+    n = 0
+    for rec in filter(str.strip, log.split("\x1e")):
+        author, committer, body = rec.strip("\n").split("\x00", 2)
+        n += clean_message(body) != clean_message_noop(body) or is_ai(author) or is_ai(committer)
+    return n
+
+
+def unpushed(repo: Path) -> list[str]:
+    """Branches whose remote still has AI credits that the local history already dropped,
+    i.e. ``clean`` ran without ``--push``. Uses remote-tracking refs as they are; no fetch."""
+    return [t.branch for t in tracked_branches(repo)
+            if not is_ancestor(repo, t.upstream, t.branch) and not unique(repo, t.branch, t.upstream)
+            and flagged(repo, f"{t.branch}..{t.upstream}") and not flagged(repo, f"{t.upstream}..{t.branch}")]
+
+
+def backup(repo: Path) -> Path:
+    path = repo / ".git" / f"deai-backup-{time.strftime('%Y%m%d-%H%M%S')}.bundle"
+    if not path.exists():
+        git(repo, "bundle", "create", str(path), "--branches", "--tags")
+    return path
+
+
+def sync_with_remote(repo: Path) -> list[Tracked]:
+    """Fetch and line every tracked branch up with its upstream so a force-push loses nothing.
+
+    - behind: fast-forward.
+    - diverged, but every remote commit has an equivalent here (e.g. this side was rewritten,
+      or was rewritten and then got new commits): keep the local branch; the push loses nothing.
+    - diverged, but every local commit has an equivalent on the remote (the remote was
+      rewritten elsewhere, this clone is stale): move the branch to the remote's history.
+    - both sides have work the other lacks: stop. Merging would bring the old history back.
     """
     git(repo, "fetch", "--all", "--quiet")
     current = git(repo, "branch", "--show-current").strip()
     tracked = tracked_branches(repo)
-    def is_ancestor(a: str, b: str) -> bool:
-        return subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b]).returncode == 0
-
     for t in tracked:
-        if is_ancestor(t.upstream, t.branch):
+        up = t.upstream.removeprefix("refs/remotes/")
+        if is_ancestor(repo, t.upstream, t.branch):
             continue                               # local contains the remote: fine
-        if not is_ancestor(t.branch, t.upstream):
-            raise RuntimeError(f"branch {t.branch} has diverged from {t.upstream}; reconcile it first")
+        if is_ancestor(repo, t.branch, t.upstream):
+            why = "it was behind the remote"
+        elif not unique(repo, t.branch, t.upstream):
+            continue                               # nothing on the remote that is not here
+        elif not unique(repo, t.upstream, t.branch):
+            why = "the remote has the same commits under rewritten hashes; this clone was stale"
+        else:
+            mine, theirs = unique(repo, t.upstream, t.branch), unique(repo, t.branch, t.upstream)
+            raise RuntimeError(
+                f"branch {t.branch} has diverged from {up}: {mine} commit(s) only here, "
+                f"{theirs} only on the remote. Put yours on top of the remote with "
+                f"`git rebase {up}` (commits the remote already has in rewritten form are "
+                f"dropped), then run deai again. Do not `git pull` or merge: that brings the old "
+                f"history back.")
+        print(f"  backup: {backup(repo)}")
         if t.branch == current:
-            git(repo, "merge", "-q", "--ff-only", t.upstream)
+            git(repo, "reset", "-q", "--keep", t.upstream)
         else:
             git(repo, "branch", "-q", "-f", t.branch, t.upstream)
-        print(f"  fast-forwarded {t.branch} to {t.upstream} (it was behind the remote)")
+        print(f"  moved {t.branch} to {up} ({why})")
     return tracked
 
 
@@ -238,15 +290,17 @@ def push_rewritten(repo: Path, tracked: list[Tracked]) -> None:
 def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     if git(repo, "status", "--porcelain", "--untracked-files=no").strip():
         raise RuntimeError("uncommitted changes to tracked files; commit or stash them first")
-    tracked = sync_with_remote(repo) if push else []
     if as_ident is None:
         name, email = git(repo, "config", "user.name").strip(), git(repo, "config", "user.email").strip()
         as_ident = f"{name} <{email}>"
     if not re.fullmatch(r"[^<>]+ <[^<>]+>", as_ident) or is_ai(as_ident):
         raise RuntimeError(f"--as must be a human 'Name <email>', got {as_ident!r}")
+    tracked = sync_with_remote(repo) if push else []
+    if not scan(repo).dirty:                      # the stale side was dropped in favour of a clean remote
+        print("  already clean after syncing with the remote")
+        return 0
 
-    backup = repo / ".git" / f"deai-backup-{time.strftime('%Y%m%d-%H%M%S')}.bundle"
-    git(repo, "bundle", "create", str(backup), "--branches", "--tags")
+    bundle = backup(repo)
 
     exp = subprocess.Popen(["git", "-C", str(repo), "fast-export", "--branches", "--tags",
                             "--signed-tags=strip", "--use-done-feature"], stdout=subprocess.PIPE)
@@ -256,15 +310,22 @@ def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     changed = rewrite_stream(exp.stdout, imp.stdin, as_ident.encode("utf-8"))
     imp.stdin.close()
     if exp.wait() or imp.wait():
-        raise RuntimeError(f"fast-export/fast-import failed; history is unchanged or restorable from {backup}")
+        raise RuntimeError(f"fast-export/fast-import failed; history is unchanged or restorable from {bundle}")
     git(repo, "reset", "-q", "--keep", "HEAD")    # trees are identical; refresh the index only
-    print(f"  rewrote {changed} commit(s); backup: {backup}")
+    print(f"  rewrote {changed} commit(s); backup: {bundle}")
 
     if push:
         push_rewritten(repo, tracked)
     else:
         print("  not pushed. Run again with --push to publish (it fetches first and never pushes a stale branch).")
     return changed
+
+
+def publish(repo: Path) -> None:
+    """Push a history that ``clean`` already rewrote locally."""
+    if git(repo, "status", "--porcelain", "--untracked-files=no").strip():
+        raise RuntimeError("uncommitted changes to tracked files; commit or stash them first")
+    push_rewritten(repo, sync_with_remote(repo))
 
 
 # ───────────── CLI ─────────────
@@ -293,8 +354,10 @@ def main(argv: list[str] | None = None) -> int:
         print("no repositories found", file=sys.stderr)
         return 1
     reports = [scan(r, a.me) for r in repos]
+    pending = {rp.repo: unpushed(rp.repo) for rp in reports if not rp.dirty}
     for rp in reports:
-        mark = "shared" if rp.others else "AI credits" if rp.dirty else "clean"
+        mark = ("shared" if rp.others else "AI credits" if rp.dirty
+                else "unpushed" if pending[rp.repo] else "clean")
         print(f"{mark:>10}  {rp.repo}  ({rp.commits} commits; trailers {len(rp.trailers)}, "
               f"AI author/committer {len(rp.idents)})")
         for kind, hs in (("trailer", rp.trailers), ("identity", rp.idents)):
@@ -303,30 +366,39 @@ def main(argv: list[str] | None = None) -> int:
         if rp.others:
             names = sorted(rp.others)
             print(f"            by others: {', '.join(names[:4])}{' ...' if len(names) > 4 else ''}")
+        if pending.get(rp.repo):
+            print(f"            cleaned here, not pushed: {', '.join(pending[rp.repo])}")
     if a.cmd == "scan":
         if any(rp.others for rp in reports):
             print("\n'shared': other people's commits are flagged (fork or shared history). "
                   "clean skips these unless --include-shared; add --me for your other e-mails.")
+        if any(pending.values()):
+            print("\n'unpushed': the remote still has the AI credits. Publish with `deai clean --push`; "
+                  "do not `git pull`, which merges the old history back in.")
         return 0
 
     todo = [rp for rp in reports if rp.dirty and (a.include_shared or not rp.others)]
+    to_publish = [r for r, branches in pending.items() if branches] if a.push else []
     for rp in reports:
         if rp.dirty and rp.others and not a.include_shared:
             print(f"skip {rp.repo}: shared history (see --include-shared)")
-    if not todo:
-        print("nothing to clean")
+    if not todo and not to_publish:
+        print("nothing to clean" + ("" if a.push or not any(pending.values()) else
+                                    "; cleaned history is waiting to be pushed (add --push)"))
         return 0
     if not a.yes:
-        ans = input(f"Rewrite history of {len(todo)} repositor{'y' if len(todo) == 1 else 'ies'}? "
+        n = len(todo) + len(to_publish)
+        what = "Rewrite and push" if a.push else "Rewrite"
+        ans = input(f"{what} history of {n} repositor{'y' if n == 1 else 'ies'}? "
                     "Commit hashes will change. [y/N] ")
         if ans.strip().lower() not in ("y", "yes"):
             print("aborted")
             return 1
     failed = 0
-    for rp in todo:
-        print(f"cleaning {rp.repo}")
+    for repo, action in [*((rp.repo, "cleaning") for rp in todo), *((r, "pushing") for r in to_publish)]:
+        print(f"{action} {repo}")
         try:
-            clean(rp.repo, a.as_ident, a.push)
+            clean(repo, a.as_ident, a.push) if action == "cleaning" else publish(repo)
         except RuntimeError as e:
             failed += 1
             print(f"  error: {e}", file=sys.stderr)

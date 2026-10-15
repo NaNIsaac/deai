@@ -88,8 +88,9 @@ deai clean -r ~/code --yes --push  # no question; force-push afterwards
 ```
 
 **3. Publish.** Without `--push`, nothing leaves your machine. When you are happy with the result,
-run the same command again with `--push`. Do not use `git push --all`: it would also push stale
-local branches over newer remote ones.
+run the same command again with `--push`; `scan` marks such repositories `unpushed` until then.
+Do not use `git push --all`: it would also push stale local branches over newer remote ones. Do not
+`git pull` a cleaned branch either: it merges the old history, AI credits included, back in.
 
 GitHub can take a while to refresh the Contributors list after the push.
 
@@ -121,7 +122,11 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
   ```
 - **Pushes never lose remote commits.** `--push` fetches first.
   - A local branch that is behind its remote is fast-forwarded before the rewrite.
-  - A branch that has diverged from its remote stops the run.
+  - A branch that has diverged from its remote is compared commit by commit (`git cherry`, which
+    matches a rewritten commit to its original). If the remote has nothing the branch lacks, the
+    branch is pushed. If the branch has nothing the remote lacks (the remote was cleaned from
+    another machine), the branch is moved to the remote's history. If both sides have new work,
+    deai stops and tells you to `git rebase` onto the remote.
   - Each branch is force-pushed with an explicit lease on the commit seen at fetch time.
   - Only branches with an upstream are pushed; local-only branches stay local.
 - **Forks are protected.** A repository whose flagged commits were written by other people is
