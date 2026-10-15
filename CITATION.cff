@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "deai: Find and remove AI co-author credits from git history"
+authors:
+  - family-names: Yong
+    given-names: Isaac
+    email: isaacyong@naver.com
+    affiliation: "Sogang University"
+repository-code: "https://github.com/NaNIsaac/deai"
+abstract: "Command-line tool that finds AI co-author credits (Co-authored-by trailers and AI author/committer identities) in git repositories and rewrites history without them."
+keywords:
+  - "git"
+  - "co-author"
+  - "ai"
+  - "history"
+  - "cli"
+license: MIT
+version: "0.1.0"
+date-released: "2026-10-14"

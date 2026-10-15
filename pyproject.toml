@@ -2,7 +2,7 @@
 name = "deai"
 version = "0.1.0"
 description = "Find and remove AI co-author credits from git history"
-authors = [{name = "Isaac Yong"}]
+authors = [{ name = "Isaac Yong", email = "isaacyong@naver.com" }]
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -10,6 +10,7 @@ dependencies = []
 keywords = ["git", "co-author", "ai", "history", "cli"]
 
 [project.urls]
+Homepage = "https://github.com/NaNIsaac/deai"
 Repository = "https://github.com/NaNIsaac/deai"
 
 [project.scripts]
