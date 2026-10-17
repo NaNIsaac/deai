@@ -6,6 +6,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from deai import cli  # noqa: E402
 from deai.cli import clean, clean_message, main, scan, unpushed  # noqa: E402
 
 
@@ -158,6 +159,53 @@ def test_work_on_both_sides_stops():
         assert "two (remote only)" in log and "three (b only)" in log and "anthropic" not in log.lower()
 
 
+def test_push_tags_with_lease():
+    """Rewritten tags are pushed with a lease; tags the run did not rewrite stay as they are."""
+    with tempfile.TemporaryDirectory() as d:
+        remote, a, b = two_clones(Path(d))
+        git(a, "tag", "light")
+        git(a, "tag", "-a", "ann", "-m", "annotated")
+        git(a, "push", "-q", "origin", "light", "ann")
+        git(a, "tag", "rel")                                  # a's own "rel"; the remote gets b's
+        git(b, "tag", "-a", "rel", "-m", "b's release")
+        git(b, "push", "-q", "origin", "rel")
+        git(a, "tag", "wip")                                  # local only
+        rel = git(remote, "rev-parse", "rel")
+
+        assert clean(a, None, push=True) == 1
+        for tag in ("light", "ann"):
+            assert git(remote, "rev-parse", tag) == git(a, "rev-parse", tag)
+            assert "anthropic" not in git(remote, "log", "--format=%B", tag).lower()
+        assert git(remote, "cat-file", "-t", "ann").strip() == "tag"
+        assert git(remote, "rev-parse", "rel") == rel
+        assert "wip" not in git(remote, "tag")
+
+
+def test_tag_moved_after_fetch_is_not_overwritten():
+    with tempfile.TemporaryDirectory() as d:
+        remote, a, b = two_clones(Path(d))
+        git(a, "tag", "v1")
+        git(a, "push", "-q", "origin", "v1")
+        push = cli.push_rewritten
+
+        def race(repo, tracked, tags):                        # b moves v1 between a's fetch and push
+            git(b, "fetch", "-q", "--tags", "origin")
+            git(b, "tag", "-f", "-a", "v1", "-m", "moved by b")
+            git(b, "push", "-q", "--force", "origin", "v1")
+            push(repo, tracked, tags)
+
+        cli.push_rewritten = race
+        try:
+            clean(a, None, push=True)
+        except RuntimeError as e:
+            assert "v1" in str(e), e
+        else:
+            raise AssertionError("a tag moved after the fetch must not be overwritten")
+        finally:
+            cli.push_rewritten = push
+        assert git(remote, "rev-parse", "v1") == git(b, "rev-parse", "v1")
+
+
 if __name__ == "__main__":
     test_messages()
     test_rewrite()
@@ -165,4 +213,6 @@ if __name__ == "__main__":
     test_clean_then_push_publishes()
     test_stale_clone_follows_cleaned_remote()
     test_work_on_both_sides_stops()
+    test_push_tags_with_lease()
+    test_tag_moved_after_fetch_is_not_overwritten()
     print("deai: all checks passed")

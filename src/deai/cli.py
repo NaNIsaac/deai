@@ -18,10 +18,13 @@ Safety:
 - a full backup bundle is written to ``.git/deai-backup-<time>.bundle`` first;
 - only local branches and tags are rewritten. Remote-tracking refs keep the old history,
   so ``--push`` can use ``--force-with-lease`` against what the remote really has;
+- ``--push`` only pushes remote tags whose old history this run cleaned, each with a lease on
+  the tag seen at fetch time. Other remote tags are left alone;
 - nothing is pushed unless ``--push`` is given.
 
 Rewriting changes every commit hash from the first cleaned commit on. Anyone else with a
-clone must re-clone or rebase afterwards.
+clone must re-clone or rebase afterwards. Signed annotated tags that are rewritten lose
+their signature.
 """
 
 from __future__ import annotations
@@ -273,8 +276,34 @@ def sync_with_remote(repo: Path) -> list[Tracked]:
     return tracked
 
 
-def push_rewritten(repo: Path, tracked: list[Tracked]) -> None:
-    """Force-push each tracked branch with an explicit lease on the commit seen at fetch time."""
+def remote_tags(repo: Path, tracked: list[Tracked]) -> dict[str, dict[str, str]]:
+    """Tag ref -> object id on each remote, taken before the rewrite: the leases for the tags."""
+    out = {}
+    for remote in sorted({t.remote for t in tracked}):
+        refs = (line.split("\t") for line in git(repo, "ls-remote", "--tags", remote).splitlines())
+        out[remote] = {ref: oid for oid, ref in refs if not ref.endswith("^{}")}
+    return out
+
+
+def rewritten_tags(repo: Path, tags: dict[str, str]) -> dict[str, str]:
+    """Remote tags whose local copy is the same history without the AI credits.
+
+    A remote tag that moved elsewhere, or that this clone never had, is not ours to replace.
+    """
+    out = {}
+    for ref, old in tags.items():
+        new = git(repo, "rev-parse", "-q", "--verify", ref, check=False).strip()
+        if (new and new != old
+                and git(repo, "rev-parse", "-q", "--verify", f"{old}^{{object}}", check=False).strip()
+                and not unique(repo, new, old) and flagged(repo, f"{new}..{old}")
+                and not flagged(repo, f"{old}..{new}")):
+            out[ref] = old
+    return out
+
+
+def push_rewritten(repo: Path, tracked: list[Tracked], tags: dict[str, dict[str, str]]) -> None:
+    """Force-push each tracked branch and rewritten tag with an explicit lease on the object
+    seen at fetch time."""
     if not tracked:
         print("  no branch has an upstream; nothing to push")
         return
@@ -282,9 +311,10 @@ def push_rewritten(repo: Path, tracked: list[Tracked]) -> None:
         git(repo, "push", "--quiet", f"--force-with-lease={t.remote_ref}:{t.oid}", t.remote,
             f"refs/heads/{t.branch}:{t.remote_ref}")
         print(f"  pushed {t.branch} -> {t.remote}/{t.remote_ref.removeprefix('refs/heads/')}")
-    for remote in sorted({t.remote for t in tracked}):
-        git(repo, "push", "--quiet", "--force", "--tags", remote)
-        print(f"  pushed tags -> {remote}")
+    for remote, seen in tags.items():
+        for ref, old in rewritten_tags(repo, seen).items():
+            git(repo, "push", "--quiet", f"--force-with-lease={ref}:{old}", remote, f"{ref}:{ref}")
+            print(f"  pushed {ref.removeprefix('refs/tags/')} -> {remote}")
 
 
 def clean(repo: Path, as_ident: str | None, push: bool) -> int:
@@ -296,6 +326,7 @@ def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     if not re.fullmatch(r"[^<>]+ <[^<>]+>", as_ident) or is_ai(as_ident):
         raise RuntimeError(f"--as must be a human 'Name <email>', got {as_ident!r}")
     tracked = sync_with_remote(repo) if push else []
+    tags = remote_tags(repo, tracked)
     if not scan(repo).dirty:                      # the stale side was dropped in favour of a clean remote
         print("  already clean after syncing with the remote")
         return 0
@@ -315,7 +346,7 @@ def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     print(f"  rewrote {changed} commit(s); backup: {bundle}")
 
     if push:
-        push_rewritten(repo, tracked)
+        push_rewritten(repo, tracked, tags)
     else:
         print("  not pushed. Run again with --push to publish (it fetches first and never pushes a stale branch).")
     return changed
@@ -325,7 +356,8 @@ def publish(repo: Path) -> None:
     """Push a history that ``clean`` already rewrote locally."""
     if git(repo, "status", "--porcelain", "--untracked-files=no").strip():
         raise RuntimeError("uncommitted changes to tracked files; commit or stash them first")
-    push_rewritten(repo, sync_with_remote(repo))
+    tracked = sync_with_remote(repo)
+    push_rewritten(repo, tracked, remote_tags(repo, tracked))
 
 
 # ───────────── CLI ─────────────
@@ -342,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
                        help="another e-mail of yours (repeatable; git config user.email is always included)")
     c = sub.choices["clean"]
     c.add_argument("--yes", action="store_true", help="do not ask before rewriting")
-    c.add_argument("--push", action="store_true", help="force-push branches and tags afterwards")
+    c.add_argument("--push", action="store_true", help="force-push branches and rewritten tags afterwards")
     c.add_argument("--as", dest="as_ident", metavar="'NAME <EMAIL>'",
                    help="identity for AI-authored commits (default: git config user.*)")
     c.add_argument("--include-shared", action="store_true",
