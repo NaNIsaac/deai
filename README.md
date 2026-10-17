@@ -101,7 +101,7 @@ GitHub can take a while to refresh the Contributors list after the push.
 | `-r`, `--recursive` | scan, clean | find repositories below each path |
 | `--me EMAIL` | scan, clean | another e-mail of yours (repeatable). `git config user.email` is always included. |
 | `--yes` | clean | do not ask before rewriting |
-| `--push` | clean | force-push branches (`--force-with-lease`) and tags afterwards |
+| `--push` | clean | force-push branches and rewritten tags (`--force-with-lease`) afterwards |
 | `--as 'Name <email>'` | clean | identity for commits authored by an AI (default: `git config user.*`) |
 | `--include-shared` | clean | also rewrite `shared` repositories (rarely what you want) |
 
@@ -129,6 +129,8 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
     deai stops and tells you to `git rebase` onto the remote.
   - Each branch is force-pushed with an explicit lease on the commit seen at fetch time.
   - Only branches with an upstream are pushed; local-only branches stay local.
+  - Only remote tags that the rewrite cleaned are pushed, each with a lease on the tag seen at
+    fetch time. Other remote tags and local-only tags are left alone.
 - **Forks are protected.** A repository whose flagged commits were written by other people is
   marked `shared` and skipped. Rewriting it would split your fork from upstream.
 
@@ -136,7 +138,8 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
 - **Commit hashes change** from the first cleaned commit onward. Anyone else with a clone must
   re-clone (or `git fetch && git reset --hard origin/<branch>`).
 - **Open pull requests** from a rewritten branch need to be re-created.
-- **GPG-signed commits** lose their signatures, because the signed content changed.
+- **GPG-signed commits** lose their signatures, because the signed content changed. So do signed
+  annotated tags that point into the rewritten history.
 - **Protected branches** on GitHub may reject the force-push. Allow force-pushes temporarily, or push
   to a new branch.
 

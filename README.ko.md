@@ -67,7 +67,7 @@ push한 뒤 GitHub의 Contributors 목록이 갱신되기까지 시간이 좀 �
 | `-r`, `--recursive` | scan, clean | 경로 아래 저장소를 모두 찾음 |
 | `--me EMAIL` | scan, clean | 내 다른 이메일 (여러 번 지정 가능). `git config user.email`은 항상 포함 |
 | `--yes` | clean | 확인 질문 없이 진행 |
-| `--push` | clean | 끝나면 브랜치(`--force-with-lease`)와 태그를 force-push |
+| `--push` | clean | 끝나면 브랜치와 다시 쓴 태그를 force-push (`--force-with-lease`) |
 | `--as '이름 <이메일>'` | clean | AI가 작성자로 된 커밋을 바꿀 이름 (기본값: `git config user.*`) |
 | `--include-shared` | clean | `shared` 저장소도 다시 씀 (보통은 쓰지 마세요) |
 
@@ -92,6 +92,7 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
     로컬 브랜치를 원격 기록으로 옮깁니다. 양쪽에 새 작업이 있으면 멈추고 `git rebase`로 원격 위에 올리라고 안내합니다.
   - 브랜치마다 fetch 시점의 커밋을 lease로 걸어 force-push합니다.
   - upstream이 있는 브랜치만 push하고, 로컬 전용 브랜치는 그대로 둡니다.
+  - 원격 태그 중 이번에 다시 쓴 것만 fetch 시점의 태그를 lease로 걸어 push합니다. 다른 원격 태그와 로컬 전용 태그는 그대로 둡니다.
 - **fork는 보호합니다.** 다른 사람이 쓴 커밋이 걸린 저장소는 `shared`로 표시하고 건너뜁니다.
   다시 쓰면 upstream과 기록이 갈라지기 때문입니다.
 
@@ -99,7 +100,7 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
 - **커밋 해시가 바뀝니다.** 처음 고쳐진 커밋부터 그 뒤가 모두 바뀝니다. 다른 사람이 clone해 둔 저장소는
   다시 clone하거나 `git fetch && git reset --hard origin/<브랜치>`를 해야 합니다.
 - **열린 PR**이 다시 쓴 브랜치에 있으면 PR을 새로 만들어야 합니다.
-- **GPG 서명**은 사라집니다. 서명한 내용이 바뀌었기 때문입니다.
+- **GPG 서명**은 사라집니다. 서명한 내용이 바뀌었기 때문입니다. 다시 쓴 기록을 가리키는 서명된 annotated 태그도 마찬가지입니다.
 - **보호된 브랜치**는 force-push가 거절될 수 있습니다. 잠깐 허용하거나 새 브랜치로 push하세요.
 
 ## 다시 생기지 않게 하기
