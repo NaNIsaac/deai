@@ -1,5 +1,6 @@
 """End-to-end check on a throwaway repository: python tests/test_deai.py (or pytest)."""
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -8,6 +9,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from deai import cli  # noqa: E402
 from deai.cli import clean, clean_message, main, scan, unpushed  # noqa: E402
+
+# A global commit-msg hook may strip the very trailers these tests commit.
+os.environ["GIT_CONFIG_GLOBAL"] = os.devnull
 
 
 def git(repo, *args, env=None):
@@ -26,7 +30,6 @@ def test_messages():
 
 
 def test_rewrite():
-    import os
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
         git(repo, "init", "-q", "-b", "main")
