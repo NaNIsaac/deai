@@ -1,6 +1,6 @@
 # deai
 
-[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **Remove AI co-author credits from your git history. Human co-authors and file contents stay as they are.**
 

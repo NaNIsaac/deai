@@ -1,6 +1,6 @@
 # deai
 
-[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **git 기록에서 AI 공동저자 표시를 지웁니다. 사람 공동저자와 파일 내용은 그대로 둡니다.**
 
