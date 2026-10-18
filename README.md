@@ -6,6 +6,11 @@
 
 [한국어](README.ko.md)
 
+AI coding tools append `Co-Authored-By: Claude <noreply@anthropic.com>` and similar lines to commit
+messages. GitHub reads them and lists the tool under your repository's **Contributors**. `deai` finds
+these credits across your repositories, backs up, and rewrites the messages. Nothing is pushed unless
+you ask.
+
 Before:
 
 ```
@@ -35,13 +40,8 @@ AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
             trailer: c72d54a 049c5fb
 ```
 
-AI coding tools append `Co-Authored-By: Claude <noreply@anthropic.com>` and similar lines to commit
-messages. GitHub reads them and lists the tool under your repository's **Contributors**. `deai` finds
-these credits across your repositories, backs up, and rewrites the messages. Nothing is pushed unless
-you ask.
-
 ## Install
-Requires Python 3.10+ and git. There are no other dependencies.
+Requires Python 3.10+ and git.
 
 ```bash
 pip install git-deai
@@ -145,7 +145,7 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
 
 ## Stop it from coming back
 Turn the attribution off in your AI tool. In Claude Code, add this to `~/.claude/settings.json`
-(an empty string removes that line; the older `includeCoAuthoredBy` is deprecated):
+(an empty string removes that line):
 
 ```json
 { "attribution": { "commit": "", "pr": "" } }
@@ -153,7 +153,7 @@ Turn the attribution off in your AI tool. In Claude Code, add this to `~/.claude
 
 ## How it works
 `git fast-export --branches --tags` → message filter (stdlib Python) → `git fast-import --force`.
-There is no git-filter-repo dependency. File contents are passed through untouched, so every tree is
+File contents are passed through untouched, so every tree is
 byte-identical to the original.
 
 ## Test

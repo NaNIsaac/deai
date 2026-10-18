@@ -1,21 +1,46 @@
 # deai
 
+[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **git 기록에서 AI 공동저자 표시를 지웁니다. 사람 공동저자와 파일 내용은 그대로 둡니다.**
 
-[English](README.md) · 실제 실행 전후 비교는 영문 README 첫 화면에 있습니다.
+[English](README.md)
 
-## 왜 필요한가요
-AI 코딩 도구는 커밋 메시지 끝에 이런 줄을 붙입니다.
+AI 코딩 도구는 커밋 메시지 끝에 `Co-Authored-By: Claude <noreply@anthropic.com>` 같은 줄을 붙입니다.
+GitHub는 이 줄을 읽어서 저장소의 **Contributors** 목록에 그 도구를 올립니다. `deai`는 내 저장소 전체에서
+이런 표시를 찾아 백업한 뒤 커밋 메시지를 다시 씁니다. 요청하지 않으면 아무것도 push하지 않습니다.
+
+전:
 
 ```
-Co-Authored-By: Claude <noreply@anthropic.com>
+c72d54a docs: update README
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+        Co-Authored-By: Claude <noreply@anthropic.com>
+6b98cbb fix: handle empty input
+        Co-authored-by: Jane Doe <jane@example.com>
+049c5fb feat: add parser
+        Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-GitHub는 이 줄을 읽어서 저장소의 **Contributors** 목록에 AI를 올립니다. Copilot, Cursor, Codex 등도
-마찬가지입니다. `deai`는 내 저장소 전체에서 이런 표시를 찾아 git 기록에서 지웁니다. 코드는 그대로입니다.
+`deai clean` 후:
+
+```
+c70f42d docs: update README
+24d6828 fix: handle empty input
+        Co-authored-by: Jane Doe <jane@example.com>
+0223c1d feat: add parser
+```
+
+내 저장소에서 바로 확인해 보세요. `scan`은 읽기만 합니다.
+
+```console
+$ uvx --from git-deai deai scan -r ~/code
+AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
+            trailer: c72d54a 049c5fb
+```
 
 ## 설치
-Python 3.10 이상과 git만 있으면 됩니다. 다른 의존성은 없습니다.
+Python 3.10 이상과 git이 필요합니다.
 
 ```bash
 pip install git-deai
@@ -37,6 +62,14 @@ uv tool install -e .
 deai scan                          # 현재 폴더의 저장소
 deai scan 경로/저장소               # 저장소 하나
 deai scan -r ~/code                # 폴더 아래 모든 저장소
+```
+
+```
+AI credits  /home/me/code/my-app  (96 commits; trailers 51, AI author/committer 0)
+            trailer: faea929 e37c10a 2ce9a9c 7a5f1ab ...
+     clean  /home/me/code/notes   (8 commits; trailers 0, AI author/committer 0)
+    shared  /home/me/code/xarray  (6578 commits; trailers 96, AI author/committer 1)
+            by others: Deepak Cherian <...>, ...
 ```
 
 | 표시 | 뜻 |
@@ -105,7 +138,7 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
 
 ## 다시 생기지 않게 하기
 AI 도구에서 공동저자 표시를 끄세요. Claude Code라면 `~/.claude/settings.json`에 다음을 넣습니다
-(빈 문자열이면 그 줄을 넣지 않습니다. 예전 설정 `includeCoAuthoredBy`는 deprecated입니다).
+(빈 문자열이면 그 줄을 넣지 않습니다).
 
 ```json
 { "attribution": { "commit": "", "pr": "" } }
@@ -113,7 +146,12 @@ AI 도구에서 공동저자 표시를 끄세요. Claude Code라면 `~/.claude/s
 
 ## 동작 방식
 `git fast-export --branches --tags` → 메시지 필터(표준 라이브러리 Python) → `git fast-import --force`.
-git-filter-repo가 필요 없습니다. 파일 내용은 손대지 않으므로 모든 트리가 원래와 바이트 단위로 같습니다.
+파일 내용은 손대지 않으므로 모든 트리가 원래와 바이트 단위로 같습니다.
+
+## 테스트
+```bash
+python tests/test_deai.py
+```
 
 ## 라이선스
 
