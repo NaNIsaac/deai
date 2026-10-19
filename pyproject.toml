@@ -35,3 +35,8 @@ packages = ["src/deai"]
 
 [tool.ruff]
 line-length = 100
+
+# violations present when ruff became mandatory in CI; remove entries as they are fixed
+[tool.ruff.lint.extend-per-file-ignores]
+"src/deai/cli.py" = ["PLW1510"]
+"tests/test_deai.py" = ["RUF100"]
