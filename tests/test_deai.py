@@ -209,9 +209,44 @@ def test_tag_moved_after_fetch_is_not_overwritten():
         assert git(remote, "rev-parse", "v1") == git(b, "rev-parse", "v1")
 
 
+
+def test_backup_bundle_can_restore_original_refs():
+    """The backup made before rewriting must restore the old commit and tag."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        repo = root / "original"
+        repo.mkdir()
+        git(repo, "init", "-q", "-b", "main")
+        git(repo, "config", "user.name", "Isaac Yong")
+        git(repo, "config", "user.email", "isaac@example.com")
+        (repo / "a.txt").write_text("before rewrite\n")
+        git(repo, "add", "a.txt")
+        git(repo, "commit", "-q", "-m", "first\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+        git(repo, "tag", "v1")
+
+        original_head = git(repo, "rev-parse", "HEAD")
+        original_message = git(repo, "log", "-1", "--format=%B")
+        assert clean(repo, None, push=False) == 1
+        assert git(repo, "rev-parse", "HEAD") != original_head
+
+        backups = list((repo / ".git").glob("deai-backup-*.bundle"))
+        assert len(backups) == 1
+        restored = root / "restored"
+        subprocess.run(["git", "clone", "-q", str(backups[0]), str(restored)],
+                       check=True, capture_output=True, text=True, encoding="utf-8")
+        # Bundles created with --branches/--tags omit HEAD; select the saved branch.
+        git(restored, "checkout", "-q", "-b", "main", "origin/main")
+        assert git(restored, "rev-parse", "HEAD") == original_head
+        assert git(restored, "rev-parse", "v1") == original_head
+        assert git(restored, "log", "-1", "--format=%B") == original_message
+        assert git(restored, "show", "HEAD:a.txt") == "before rewrite\n"
+
+
+
 if __name__ == "__main__":
     test_messages()
     test_rewrite()
+    test_backup_bundle_can_restore_original_refs()
     test_push_never_loses_remote_commits()
     test_clean_then_push_publishes()
     test_stale_clone_follows_cleaned_remote()
