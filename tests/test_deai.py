@@ -234,6 +234,8 @@ def test_backup_bundle_can_restore_original_refs():
         restored = root / "restored"
         subprocess.run(["git", "clone", "-q", str(backups[0]), str(restored)],
                        check=True, capture_output=True, text=True, encoding="utf-8")
+        # Bundles created with --branches/--tags omit HEAD; select the saved branch.
+        git(restored, "checkout", "-q", "-b", "main", "origin/main")
         assert git(restored, "rev-parse", "HEAD") == original_head
         assert git(restored, "rev-parse", "v1") == original_head
         assert git(restored, "log", "-1", "--format=%B") == original_message
