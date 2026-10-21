@@ -43,12 +43,30 @@ AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
 Python 3.10 이상과 git이 필요합니다.
 Termux는 CI에서 테스트합니다.
 
+<!-- test -->
+```bash
+uv tool install git-deai
+```
+
+설치한 명령어가 동작하는지 확인합니다.
+
+<!-- test -->
+```bash
+deai scan --help
+```
+
+다른 설치 방법:
+
 ```bash
 pip install git-deai
-# 또는 격리된 도구로
-uv tool install git-deai     # 추천
+```
+
+```bash
 pipx install git-deai
-# 또는 내려받은 폴더에서
+```
+
+```bash
+# 내려받은 폴더에서
 uv tool install -e .
 ```
 
