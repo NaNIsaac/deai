@@ -15,18 +15,28 @@ os.environ["GIT_CONFIG_GLOBAL"] = os.devnull
 
 
 def git(repo, *args, env=None):
-    return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True,
-                          encoding="utf-8", env=env).stdout
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+    ).stdout
 
 
 def test_messages():
-    msg = ("Fix the solver\n\nBody.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-           "Co-authored-by: Jane Doe <jane@uni.kr>\n")
-    assert clean_message(msg) == "Fix the solver\n\nBody.\n\nCo-authored-by: Jane Doe <jane@uni.kr>\n"
+    msg = (
+        "Fix the solver\n\nBody.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        "Co-authored-by: Jane Doe <jane@uni.kr>\n"
+    )
+    assert (
+        clean_message(msg) == "Fix the solver\n\nBody.\n\nCo-authored-by: Jane Doe <jane@uni.kr>\n"
+    )
     pr = "Summary\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n"
     assert clean_message(pr) == "Summary\n"
     human = "Generated with numpy, by hand\n"
-    assert clean_message(human) == human            # "generated with" alone is not an AI credit
+    assert clean_message(human) == human  # "generated with" alone is not an AI credit
 
 
 def test_rewrite():
@@ -53,8 +63,8 @@ def test_rewrite():
         assert not scan(repo).dirty
         log = git(repo, "log", "--format=%an <%ae>|%B%x1e")
         assert "anthropic" not in log.lower() and "claude" not in log.lower()
-        assert "Jane Doe" in log                       # human co-author kept
-        assert git(repo, "rev-parse", "HEAD^{tree}") == tree   # content untouched
+        assert "Jane Doe" in log  # human co-author kept
+        assert git(repo, "rev-parse", "HEAD^{tree}") == tree  # content untouched
         assert git(repo, "rev-parse", "v1") == git(repo, "rev-parse", "HEAD")  # tag moved along
         assert list((repo / ".git").glob("deai-backup-*.bundle"))
         assert not git(repo, "status", "--porcelain")
@@ -74,19 +84,19 @@ def test_push_never_loses_remote_commits():
         git(a, "add", "f")
         git(a, "commit", "-q", "-m", "one\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
         git(a, "push", "-q", "origin", "main")
-        git(b, "pull", "-q", "origin", "main")       # b moves ahead; a stays behind
+        git(b, "pull", "-q", "origin", "main")  # b moves ahead; a stays behind
         (b / "f").write_text("2\n")
         git(b, "commit", "-q", "-am", "two (only on the remote)")
         git(b, "push", "-q", "origin", "main")
 
         assert clean(a, None, push=True) == 1
         remote_log = git(d / "remote.git", "log", "--format=%s%n%b", "main")
-        assert "two (only on the remote)" in remote_log, remote_log   # not thrown away
+        assert "two (only on the remote)" in remote_log, remote_log  # not thrown away
         assert "anthropic" not in remote_log.lower()
 
-        (b / "f").write_text("3\n")                  # b: stale history + a new commit of its own
+        (b / "f").write_text("3\n")  # b: stale history + a new commit of its own
         git(b, "commit", "-q", "-am", "three\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
-        clean(b, None, push=True)                    # the remote has nothing b lacks: safe to push
+        clean(b, None, push=True)  # the remote has nothing b lacks: safe to push
         remote_log = git(d / "remote.git", "log", "--format=%s%n%b", "main")
         assert "three" in remote_log and "two (only on the remote)" in remote_log, remote_log
         assert "anthropic" not in remote_log.lower()
@@ -131,7 +141,7 @@ def test_stale_clone_follows_cleaned_remote():
         git(a, "commit", "-q", "-am", "two (after the cleanup)")
         git(a, "push", "-q", "origin", "main")
         head = git(remote, "rev-parse", "main")
-        assert clean(b, None, push=True) == 0          # b only has the old copy of "one"
+        assert clean(b, None, push=True) == 0  # b only has the old copy of "one"
         assert git(b, "rev-parse", "main") == head == git(remote, "rev-parse", "main")
         assert list((b / ".git").glob("deai-backup-*.bundle"))
 
@@ -154,12 +164,16 @@ def test_work_on_both_sides_stops():
             assert "git rebase origin/main" in str(e) and "git pull" in str(e), e
         else:
             raise AssertionError("work on both sides must stop the run")
-        assert git(remote, "rev-parse", "main") == before   # remote untouched
-        git(b, "rebase", "-q", "origin/main")                # the advice works: old commit dropped
+        assert git(remote, "rev-parse", "main") == before  # remote untouched
+        git(b, "rebase", "-q", "origin/main")  # the advice works: old commit dropped
         assert not scan(b).dirty
-        git(b, "push", "-q", "origin", "main")               # a plain fast-forward push now
+        git(b, "push", "-q", "origin", "main")  # a plain fast-forward push now
         log = git(remote, "log", "--format=%s%n%b", "main")
-        assert "two (remote only)" in log and "three (b only)" in log and "anthropic" not in log.lower()
+        assert (
+            "two (remote only)" in log
+            and "three (b only)" in log
+            and "anthropic" not in log.lower()
+        )
 
 
 def test_push_tags_with_lease():
@@ -169,10 +183,10 @@ def test_push_tags_with_lease():
         git(a, "tag", "light")
         git(a, "tag", "-a", "ann", "-m", "annotated")
         git(a, "push", "-q", "origin", "light", "ann")
-        git(a, "tag", "rel")                                  # a's own "rel"; the remote gets b's
+        git(a, "tag", "rel")  # a's own "rel"; the remote gets b's
         git(b, "tag", "-a", "rel", "-m", "b's release")
         git(b, "push", "-q", "origin", "rel")
-        git(a, "tag", "wip")                                  # local only
+        git(a, "tag", "wip")  # local only
         rel = git(remote, "rev-parse", "rel")
 
         assert clean(a, None, push=True) == 1
@@ -191,7 +205,7 @@ def test_tag_moved_after_fetch_is_not_overwritten():
         git(a, "push", "-q", "origin", "v1")
         push = cli.push_rewritten
 
-        def race(repo, tracked, tags):                        # b moves v1 between a's fetch and push
+        def race(repo, tracked, tags):  # b moves v1 between a's fetch and push
             git(b, "fetch", "-q", "--tags", "origin")
             git(b, "tag", "-f", "-a", "v1", "-m", "moved by b")
             git(b, "push", "-q", "--force", "origin", "v1")
@@ -207,7 +221,6 @@ def test_tag_moved_after_fetch_is_not_overwritten():
         finally:
             cli.push_rewritten = push
         assert git(remote, "rev-parse", "v1") == git(b, "rev-parse", "v1")
-
 
 
 def test_backup_bundle_can_restore_original_refs():
@@ -232,15 +245,19 @@ def test_backup_bundle_can_restore_original_refs():
         backups = list((repo / ".git").glob("deai-backup-*.bundle"))
         assert len(backups) == 1
         restored = root / "restored"
-        subprocess.run(["git", "clone", "-q", str(backups[0]), str(restored)],
-                       check=True, capture_output=True, text=True, encoding="utf-8")
+        subprocess.run(
+            ["git", "clone", "-q", str(backups[0]), str(restored)],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
         # Bundles created with --branches/--tags omit HEAD; select the saved branch.
         git(restored, "checkout", "-q", "-b", "main", "origin/main")
         assert git(restored, "rev-parse", "HEAD") == original_head
         assert git(restored, "rev-parse", "v1") == original_head
         assert git(restored, "log", "-1", "--format=%B") == original_message
         assert git(restored, "show", "HEAD:a.txt") == "before rewrite\n"
-
 
 
 if __name__ == "__main__":

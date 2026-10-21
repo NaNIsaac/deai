@@ -40,3 +40,6 @@ line-length = 100
 [tool.ruff.lint.extend-per-file-ignores]
 "src/deai/cli.py" = ["PLW1510"]
 "tests/test_deai.py" = ["RUF100"]
+
+[tool.ruff.lint]
+extend-select = ["I", "UP", "B"]

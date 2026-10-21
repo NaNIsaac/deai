@@ -61,16 +61,22 @@ def clean_message(msg: str) -> str:
         if m and is_ai(m["who"]):
             continue
         kept.append(line)
-    while kept and not kept[-1].strip():          # the trailer block often leaves a blank tail
+    while kept and not kept[-1].strip():  # the trailer block often leaves a blank tail
         kept.pop()
     return "\n".join(kept) + ("\n" if msg.endswith("\n") or kept else "")
 
 
 # ───────────── git plumbing ─────────────
 
+
 def git(repo: Path, *args: str, check: bool = True) -> str:
-    r = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                       encoding="utf-8", errors="replace")
+    r = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     if check and r.returncode:
         raise RuntimeError(f"git {' '.join(args)} failed in {repo}:\n{r.stderr.strip()}")
     return r.stdout
@@ -89,7 +95,7 @@ def find_repos(paths: list[str], recursive: bool) -> list[Path]:
         for root, dirs, _ in os.walk(p):
             if ".git" in dirs or (Path(root) / ".git").is_file():
                 out.append(Path(root))
-                dirs[:] = []                       # do not descend into a repository
+                dirs[:] = []  # do not descend into a repository
                 continue
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
     return sorted(set(out))
@@ -99,9 +105,11 @@ def find_repos(paths: list[str], recursive: bool) -> list[Path]:
 class Report:
     repo: Path
     commits: int = 0
-    trailers: list[str] = field(default_factory=list)   # short hashes with an AI trailer/line
-    idents: list[str] = field(default_factory=list)     # short hashes with an AI author/committer
-    others: set[str] = field(default_factory=set)       # human authors of flagged commits who are not you
+    trailers: list[str] = field(default_factory=list)  # short hashes with an AI trailer/line
+    idents: list[str] = field(default_factory=list)  # short hashes with an AI author/committer
+    others: set[str] = field(
+        default_factory=set
+    )  # human authors of flagged commits who are not you
 
     @property
     def dirty(self) -> bool:
@@ -118,9 +126,15 @@ def scan(repo: Path, me: list[str] | None = None) -> Report:
     (a fork, a vendored project): rewriting it would split you from upstream."""
     r = Report(repo)
     if not git(repo, "rev-parse", "--verify", "-q", "HEAD", check=False).strip():
-        return r                                   # empty repository
+        return r  # empty repository
     mine = my_emails(repo, me or [])
-    log = git(repo, "log", "--branches", "--tags", "--format=%h%x00%an <%ae>%x00%ae%x00%cn <%ce>%x00%B%x1e")
+    log = git(
+        repo,
+        "log",
+        "--branches",
+        "--tags",
+        "--format=%h%x00%an <%ae>%x00%ae%x00%cn <%ce>%x00%B%x1e",
+    )
     for rec in filter(str.strip, log.split("\x1e")):
         h, author, email, committer, body = rec.strip("\n").split("\x00", 4)
         r.commits += 1
@@ -145,6 +159,7 @@ def clean_message_noop(msg: str) -> str:
 
 
 # ───────────── rewrite ─────────────
+
 
 def rewrite_stream(src, dst, ident: bytes) -> int:
     """Copy a ``git fast-export`` stream, cleaning commit messages and AI identities.
@@ -180,11 +195,11 @@ def rewrite_stream(src, dst, ident: bytes) -> int:
 
 @dataclass
 class Tracked:
-    branch: str        # local branch name
-    remote: str        # e.g. origin
-    remote_ref: str    # e.g. refs/heads/main on the remote
-    upstream: str      # e.g. refs/remotes/origin/main
-    oid: str = ""      # upstream commit at fetch time: the lease for the force-push
+    branch: str  # local branch name
+    remote: str  # e.g. origin
+    remote_ref: str  # e.g. refs/heads/main on the remote
+    upstream: str  # e.g. refs/remotes/origin/main
+    oid: str = ""  # upstream commit at fetch time: the lease for the force-push
 
 
 def tracked_branches(repo: Path) -> list[Tracked]:
@@ -193,14 +208,18 @@ def tracked_branches(repo: Path) -> list[Tracked]:
     for line in git(repo, "for-each-ref", f"--format={fmt}", "refs/heads").splitlines():
         b, remote, rref, up = line.split("\x00")
         oid = git(repo, "rev-parse", "-q", "--verify", up, check=False).strip() if up else ""
-        if remote and oid:                         # upstream configured and present after fetch
+        if remote and oid:  # upstream configured and present after fetch
             out.append(Tracked(b, remote, rref, up, oid))
     return out
 
 
 def is_ancestor(repo: Path, a: str, b: str) -> bool:
-    return subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b],
-                          check=False).returncode == 0
+    return (
+        subprocess.run(
+            ["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b], check=False
+        ).returncode
+        == 0
+    )
 
 
 def unique(repo: Path, base: str, head: str) -> int:
@@ -224,9 +243,14 @@ def flagged(repo: Path, rev_range: str) -> int:
 def unpushed(repo: Path) -> list[str]:
     """Branches whose remote still has AI credits that the local history already dropped,
     i.e. ``clean`` ran without ``--push``. Uses remote-tracking refs as they are; no fetch."""
-    return [t.branch for t in tracked_branches(repo)
-            if not is_ancestor(repo, t.upstream, t.branch) and not unique(repo, t.branch, t.upstream)
-            and flagged(repo, f"{t.branch}..{t.upstream}") and not flagged(repo, f"{t.upstream}..{t.branch}")]
+    return [
+        t.branch
+        for t in tracked_branches(repo)
+        if not is_ancestor(repo, t.upstream, t.branch)
+        and not unique(repo, t.branch, t.upstream)
+        and flagged(repo, f"{t.branch}..{t.upstream}")
+        and not flagged(repo, f"{t.upstream}..{t.branch}")
+    ]
 
 
 def backup(repo: Path) -> Path:
@@ -252,11 +276,11 @@ def sync_with_remote(repo: Path) -> list[Tracked]:
     for t in tracked:
         up = t.upstream.removeprefix("refs/remotes/")
         if is_ancestor(repo, t.upstream, t.branch):
-            continue                               # local contains the remote: fine
+            continue  # local contains the remote: fine
         if is_ancestor(repo, t.branch, t.upstream):
             why = "it was behind the remote"
         elif not unique(repo, t.branch, t.upstream):
-            continue                               # nothing on the remote that is not here
+            continue  # nothing on the remote that is not here
         elif not unique(repo, t.upstream, t.branch):
             why = "the remote has the same commits under rewritten hashes; this clone was stale"
         else:
@@ -266,7 +290,8 @@ def sync_with_remote(repo: Path) -> list[Tracked]:
                 f"{theirs} only on the remote. Put yours on top of the remote with "
                 f"`git rebase {up}` (commits the remote already has in rewritten form are "
                 f"dropped), then run deai again. Do not `git pull` or merge: that brings the old "
-                f"history back.")
+                f"history back."
+            )
         print(f"  backup: {backup(repo)}")
         if t.branch == current:
             git(repo, "reset", "-q", "--keep", t.upstream)
@@ -293,10 +318,14 @@ def rewritten_tags(repo: Path, tags: dict[str, str]) -> dict[str, str]:
     out = {}
     for ref, old in tags.items():
         new = git(repo, "rev-parse", "-q", "--verify", ref, check=False).strip()
-        if (new and new != old
-                and git(repo, "rev-parse", "-q", "--verify", f"{old}^{{object}}", check=False).strip()
-                and not unique(repo, new, old) and flagged(repo, f"{new}..{old}")
-                and not flagged(repo, f"{old}..{new}")):
+        if (
+            new
+            and new != old
+            and git(repo, "rev-parse", "-q", "--verify", f"{old}^{{object}}", check=False).strip()
+            and not unique(repo, new, old)
+            and flagged(repo, f"{new}..{old}")
+            and not flagged(repo, f"{old}..{new}")
+        ):
             out[ref] = old
     return out
 
@@ -308,8 +337,14 @@ def push_rewritten(repo: Path, tracked: list[Tracked], tags: dict[str, dict[str,
         print("  no branch has an upstream; nothing to push")
         return
     for t in tracked:
-        git(repo, "push", "--quiet", f"--force-with-lease={t.remote_ref}:{t.oid}", t.remote,
-            f"refs/heads/{t.branch}:{t.remote_ref}")
+        git(
+            repo,
+            "push",
+            "--quiet",
+            f"--force-with-lease={t.remote_ref}:{t.oid}",
+            t.remote,
+            f"refs/heads/{t.branch}:{t.remote_ref}",
+        )
         print(f"  pushed {t.branch} -> {t.remote}/{t.remote_ref.removeprefix('refs/heads/')}")
     for remote, seen in tags.items():
         for ref, old in rewritten_tags(repo, seen).items():
@@ -321,34 +356,53 @@ def clean(repo: Path, as_ident: str | None, push: bool) -> int:
     if git(repo, "status", "--porcelain", "--untracked-files=no").strip():
         raise RuntimeError("uncommitted changes to tracked files; commit or stash them first")
     if as_ident is None:
-        name, email = git(repo, "config", "user.name").strip(), git(repo, "config", "user.email").strip()
+        name, email = (
+            git(repo, "config", "user.name").strip(),
+            git(repo, "config", "user.email").strip(),
+        )
         as_ident = f"{name} <{email}>"
     if not re.fullmatch(r"[^<>]+ <[^<>]+>", as_ident) or is_ai(as_ident):
         raise RuntimeError(f"--as must be a human 'Name <email>', got {as_ident!r}")
     tracked = sync_with_remote(repo) if push else []
     tags = remote_tags(repo, tracked)
-    if not scan(repo).dirty:                      # the stale side was dropped in favour of a clean remote
+    if not scan(repo).dirty:  # the stale side was dropped in favour of a clean remote
         print("  already clean after syncing with the remote")
         return 0
 
     bundle = backup(repo)
 
-    exp = subprocess.Popen(["git", "-C", str(repo), "fast-export", "--branches", "--tags",
-                            "--signed-tags=strip", "--use-done-feature"], stdout=subprocess.PIPE)
-    imp = subprocess.Popen(["git", "-C", str(repo), "fast-import", "--force", "--quiet"],
-                           stdin=subprocess.PIPE)
+    exp = subprocess.Popen(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "fast-export",
+            "--branches",
+            "--tags",
+            "--signed-tags=strip",
+            "--use-done-feature",
+        ],
+        stdout=subprocess.PIPE,
+    )
+    imp = subprocess.Popen(
+        ["git", "-C", str(repo), "fast-import", "--force", "--quiet"], stdin=subprocess.PIPE
+    )
     assert exp.stdout and imp.stdin
     changed = rewrite_stream(exp.stdout, imp.stdin, as_ident.encode("utf-8"))
     imp.stdin.close()
     if exp.wait() or imp.wait():
-        raise RuntimeError(f"fast-export/fast-import failed; history is unchanged or restorable from {bundle}")
-    git(repo, "reset", "-q", "--keep", "HEAD")    # trees are identical; refresh the index only
+        raise RuntimeError(
+            f"fast-export/fast-import failed; history is unchanged or restorable from {bundle}"
+        )
+    git(repo, "reset", "-q", "--keep", "HEAD")  # trees are identical; refresh the index only
     print(f"  rewrote {changed} commit(s); backup: {bundle}")
 
     if push:
         push_rewritten(repo, tracked, tags)
     else:
-        print("  not pushed. Run again with --push to publish (it fetches first and never pushes a stale branch).")
+        print(
+            "  not pushed. Run again with --push to publish (it fetches first and never pushes a stale branch)."
+        )
     return changed
 
 
@@ -362,23 +416,42 @@ def publish(repo: Path) -> None:
 
 # ───────────── CLI ─────────────
 
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="deai", description=(__doc__ or "").split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name, help_ in (("scan", "report AI credits, change nothing"),
-                        ("clean", "rewrite history without AI credits")):
+    for name, help_ in (
+        ("scan", "report AI credits, change nothing"),
+        ("clean", "rewrite history without AI credits"),
+    ):
         p = sub.add_parser(name, help=help_)
         p.add_argument("paths", nargs="*", help="repositories (default: current directory)")
-        p.add_argument("-r", "--recursive", action="store_true", help="find repositories below PATH")
-        p.add_argument("--me", action="append", default=[], metavar="EMAIL",
-                       help="another e-mail of yours (repeatable; git config user.email is always included)")
+        p.add_argument(
+            "-r", "--recursive", action="store_true", help="find repositories below PATH"
+        )
+        p.add_argument(
+            "--me",
+            action="append",
+            default=[],
+            metavar="EMAIL",
+            help="another e-mail of yours (repeatable; git config user.email is always included)",
+        )
     c = sub.choices["clean"]
     c.add_argument("--yes", action="store_true", help="do not ask before rewriting")
-    c.add_argument("--push", action="store_true", help="force-push branches and rewritten tags afterwards")
-    c.add_argument("--as", dest="as_ident", metavar="'NAME <EMAIL>'",
-                   help="identity for AI-authored commits (default: git config user.*)")
-    c.add_argument("--include-shared", action="store_true",
-                   help="also rewrite repositories where other people's commits carry AI credits")
+    c.add_argument(
+        "--push", action="store_true", help="force-push branches and rewritten tags afterwards"
+    )
+    c.add_argument(
+        "--as",
+        dest="as_ident",
+        metavar="'NAME <EMAIL>'",
+        help="identity for AI-authored commits (default: git config user.*)",
+    )
+    c.add_argument(
+        "--include-shared",
+        action="store_true",
+        help="also rewrite repositories where other people's commits carry AI credits",
+    )
     a = ap.parse_args(argv)
 
     repos = find_repos(a.paths, a.recursive)
@@ -388,25 +461,40 @@ def main(argv: list[str] | None = None) -> int:
     reports = [scan(r, a.me) for r in repos]
     pending = {rp.repo: unpushed(rp.repo) for rp in reports if not rp.dirty}
     for rp in reports:
-        mark = ("shared" if rp.others else "AI credits" if rp.dirty
-                else "unpushed" if pending[rp.repo] else "clean")
-        print(f"{mark:>10}  {rp.repo}  ({rp.commits} commits; trailers {len(rp.trailers)}, "
-              f"AI author/committer {len(rp.idents)})")
+        mark = (
+            "shared"
+            if rp.others
+            else "AI credits"
+            if rp.dirty
+            else "unpushed"
+            if pending[rp.repo]
+            else "clean"
+        )
+        print(
+            f"{mark:>10}  {rp.repo}  ({rp.commits} commits; trailers {len(rp.trailers)}, "
+            f"AI author/committer {len(rp.idents)})"
+        )
         for kind, hs in (("trailer", rp.trailers), ("identity", rp.idents)):
             if hs:
                 print(f"            {kind}: {' '.join(hs[:8])}{' ...' if len(hs) > 8 else ''}")
         if rp.others:
             names = sorted(rp.others)
-            print(f"            by others: {', '.join(names[:4])}{' ...' if len(names) > 4 else ''}")
+            print(
+                f"            by others: {', '.join(names[:4])}{' ...' if len(names) > 4 else ''}"
+            )
         if pending.get(rp.repo):
             print(f"            cleaned here, not pushed: {', '.join(pending[rp.repo])}")
     if a.cmd == "scan":
         if any(rp.others for rp in reports):
-            print("\n'shared': other people's commits are flagged (fork or shared history). "
-                  "clean skips these unless --include-shared; add --me for your other e-mails.")
+            print(
+                "\n'shared': other people's commits are flagged (fork or shared history). "
+                "clean skips these unless --include-shared; add --me for your other e-mails."
+            )
         if any(pending.values()):
-            print("\n'unpushed': the remote still has the AI credits. Publish with `deai clean --push`; "
-                  "do not `git pull`, which merges the old history back in.")
+            print(
+                "\n'unpushed': the remote still has the AI credits. Publish with `deai clean --push`; "
+                "do not `git pull`, which merges the old history back in."
+            )
         return 0
 
     todo = [rp for rp in reports if rp.dirty and (a.include_shared or not rp.others)]
@@ -415,19 +503,30 @@ def main(argv: list[str] | None = None) -> int:
         if rp.dirty and rp.others and not a.include_shared:
             print(f"skip {rp.repo}: shared history (see --include-shared)")
     if not todo and not to_publish:
-        print("nothing to clean" + ("" if a.push or not any(pending.values()) else
-                                    "; cleaned history is waiting to be pushed (add --push)"))
+        print(
+            "nothing to clean"
+            + (
+                ""
+                if a.push or not any(pending.values())
+                else "; cleaned history is waiting to be pushed (add --push)"
+            )
+        )
         return 0
     if not a.yes:
         n = len(todo) + len(to_publish)
         what = "Rewrite and push" if a.push else "Rewrite"
-        ans = input(f"{what} history of {n} repositor{'y' if n == 1 else 'ies'}? "
-                    "Commit hashes will change. [y/N] ")
+        ans = input(
+            f"{what} history of {n} repositor{'y' if n == 1 else 'ies'}? "
+            "Commit hashes will change. [y/N] "
+        )
         if ans.strip().lower() not in ("y", "yes"):
             print("aborted")
             return 1
     failed = 0
-    for repo, action in [*((rp.repo, "cleaning") for rp in todo), *((r, "pushing") for r in to_publish)]:
+    for repo, action in [
+        *((rp.repo, "cleaning") for rp in todo),
+        *((r, "pushing") for r in to_publish),
+    ]:
         print(f"{action} {repo}")
         try:
             clean(repo, a.as_ident, a.push) if action == "cleaning" else publish(repo)
