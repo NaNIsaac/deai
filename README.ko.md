@@ -41,6 +41,7 @@ AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
 
 ## 설치
 Python 3.10 이상과 git이 필요합니다.
+Termux는 CI에서 테스트합니다.
 
 ```bash
 pip install git-deai
