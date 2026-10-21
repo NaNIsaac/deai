@@ -260,6 +260,45 @@ def test_backup_bundle_can_restore_original_refs():
         assert git(restored, "show", "HEAD:a.txt") == "before rewrite\n"
 
 
+def _repo_with_ai_trailer(d):
+    repo = Path(d)
+    git(repo, "init", "-q", "-b", "main")
+    git(repo, "config", "user.name", "Isaac Yong")
+    git(repo, "config", "user.email", "isaac@example.com")
+    (repo / "a.txt").write_text("one\n")
+    git(repo, "add", "a.txt")
+    git(repo, "commit", "-q", "-m", "first\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+    return repo
+
+
+def _refuses(repo, **kwargs):
+    head = git(repo, "rev-parse", "HEAD")
+    try:
+        clean(repo, kwargs.get("as_ident"), push=False)
+    except RuntimeError as e:
+        message = str(e)
+    else:
+        raise AssertionError("clean should have refused")
+    assert git(repo, "rev-parse", "HEAD") == head  # history untouched
+    assert not list((repo / ".git").glob("deai-backup-*.bundle"))  # nothing was rewritten
+    return message
+
+
+def test_clean_refuses_uncommitted_changes():
+    with tempfile.TemporaryDirectory() as d:
+        repo = _repo_with_ai_trailer(d)
+        (repo / "a.txt").write_text("edited\n")
+        assert "uncommitted changes" in _refuses(repo)
+        assert (repo / "a.txt").read_text() == "edited\n"  # the edit is still there
+
+
+def test_clean_refuses_bad_identity():
+    with tempfile.TemporaryDirectory() as d:
+        repo = _repo_with_ai_trailer(d)
+        for ident in ("Isaac", "<isaac@example.com>", "Claude <noreply@anthropic.com>"):
+            assert "--as must be a human" in _refuses(repo, as_ident=ident)
+
+
 if __name__ == "__main__":
     test_messages()
     test_rewrite()
@@ -270,4 +309,6 @@ if __name__ == "__main__":
     test_work_on_both_sides_stops()
     test_push_tags_with_lease()
     test_tag_moved_after_fetch_is_not_overwritten()
+    test_clean_refuses_uncommitted_changes()
+    test_clean_refuses_bad_identity()
     print("deai: all checks passed")
