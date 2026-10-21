@@ -1,0 +1,26 @@
+name: Termux
+
+# termux-docker has no Android runtime, which deai does not need; it covers the bionic libc and $PREFIX layout.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  termux:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      # aarch64 termux-docker needs --privileged (or an unconfined seccomp profile).
+      - name: pytest in Termux
+        run: |
+          docker run --rm --privileged -v "$PWD:/src:ro" termux/termux-docker:aarch64 bash -euc '
+            yes | pkg upgrade -y >/dev/null
+            pkg install -y python git >/dev/null
+            cp -r /src "$HOME/deai"
+            cd "$HOME/deai"
+            pip install pytest . >/dev/null
+            pytest -q
+            deai --help >/dev/null
+          '
