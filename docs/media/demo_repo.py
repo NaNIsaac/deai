@@ -18,9 +18,11 @@ COMMITS = [
     ("parser.py", "fix: handle empty input\n\nCo-authored-by: Jane Doe <jane@example.com>\n"),
     (
         "README.md",
-        "docs: update README\n\n"
-        "Generated with [Claude Code](https://claude.com/claude-code)\n\n"
-        "Co-Authored-By: Claude <noreply@anthropic.com>\n",
+        (
+            "docs: update README\n\n"
+            "Generated with [Claude Code](https://claude.com/claude-code)\n\n"
+            "Co-Authored-By: Claude <noreply@anthropic.com>\n"
+        ),
     ),
 ]
 
