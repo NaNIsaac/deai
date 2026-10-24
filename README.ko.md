@@ -2,6 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+<img src="https://raw.githubusercontent.com/NaNIsaac/deai/main/docs/media/demo.gif" width="720" alt="deai scan이 AI 크레딧이 있는 커밋 두 개를 찾고, deai clean이 y/N 확인 뒤 다시 쓰며, git log에는 사람 공동 저자만 남는다">
+
 **git 기록에서 AI 공동저자 표시를 지웁니다. 사람 공동저자와 파일 내용은 그대로 둡니다.**
 
 [English](README.md)
