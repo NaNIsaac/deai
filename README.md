@@ -2,6 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+<img src="https://raw.githubusercontent.com/NaNIsaac/deai/main/docs/media/demo.gif" width="720" alt="deai scan finds two commits with AI credits, deai clean rewrites them after a y/N prompt, and git log shows the human co-author kept">
+
 **Remove AI co-author credits from your git history. Human co-authors and file contents stay as they are.**
 
 [한국어](README.ko.md)
