@@ -312,3 +312,24 @@ if __name__ == "__main__":
     test_clean_refuses_uncommitted_changes()
     test_clean_refuses_bad_identity()
     print("deai: all checks passed")
+
+
+def test_recursive_scan_skips_invalid_git_metadata():
+    """A leftover .git file must not abort scanning other valid repositories."""
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        valid = root / "valid"
+        valid.mkdir()
+        git(valid, "init", "-q")
+        invalid = root / "invalid"
+        invalid.mkdir()
+        (invalid / ".git").write_text("gitdir: /missing/git/metadata\n")
+        assert cli.find_repos([str(root)], recursive=True) == [valid]
+        assert main(["scan", "-r", str(root)]) == 0
+
+
+def test_explicit_invalid_git_metadata_is_skipped():
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        (root / ".git").write_text("gitdir: /missing/git/metadata\n")
+        assert cli.find_repos([str(root)], recursive=False) == []
