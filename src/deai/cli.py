@@ -82,19 +82,31 @@ def git(repo: Path, *args: str, check: bool = True) -> str:
     return r.stdout
 
 
+def is_valid_repo(path: Path) -> bool:
+    """Exclude stale .git entries and paths whose Git metadata is unusable."""
+    return subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "--is-inside-work-tree"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip() == "true"
+
+
 def find_repos(paths: list[str], recursive: bool) -> list[Path]:
     out = []
     for p in map(Path, paths or ["."]):
         p = p.resolve()
         if (p / ".git").exists():
-            out.append(p)
+            if is_valid_repo(p):
+                out.append(p)
             continue
         if not recursive:
             print(f"skip {p}: not a git repository (use -r to search below it)", file=sys.stderr)
             continue
         for root, dirs, _ in os.walk(p):
             if ".git" in dirs or (Path(root) / ".git").is_file():
-                out.append(Path(root))
+                if is_valid_repo(Path(root)):
+                    out.append(Path(root))
                 dirs[:] = []  # do not descend into a repository
                 continue
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
