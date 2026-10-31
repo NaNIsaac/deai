@@ -84,12 +84,15 @@ def git(repo: Path, *args: str, check: bool = True) -> str:
 
 def is_valid_repo(path: Path) -> bool:
     """Exclude stale .git entries and paths whose Git metadata is unusable."""
-    return subprocess.run(
-        ["git", "-C", str(path), "rev-parse", "--is-inside-work-tree"],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip() == "true"
+    return (
+        subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+        == "true"
+    )
 
 
 def find_repos(paths: list[str], recursive: bool) -> list[Path]:
