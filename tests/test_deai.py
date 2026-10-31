@@ -324,7 +324,7 @@ def test_recursive_scan_skips_invalid_git_metadata():
         invalid = root / "invalid"
         invalid.mkdir()
         (invalid / ".git").write_text("gitdir: /missing/git/metadata\n")
-        assert cli.find_repos([str(root)], recursive=True) == [valid]
+        assert cli.find_repos([str(root)], recursive=True) == [valid.resolve()]
         assert main(["scan", "-r", str(root)]) == 0
 
 
