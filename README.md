@@ -43,7 +43,24 @@ AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
 ```
 
 ## Install
-Requires Python 3.10+ and git.
+
+One line, nothing needed beforehand: the script installs [uv](https://docs.astral.sh/uv/) if it is
+missing, and uv fetches a Python. Windows (cmd or PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/deai/main/install.ps1 | iex"
+```
+
+macOS and Linux:
+
+```sh
+curl -LsSf https://raw.githubusercontent.com/NaNIsaac/deai/main/install.sh | sh
+```
+
+It runs `uv tool install git-deai` and puts uv's command folder on `PATH` for new terminals.
+Run the same line again to update.
+
+deai needs git. By hand, it needs Python 3.10+ too; with uv:
 Termux is tested in CI.
 
 <!-- test -->
