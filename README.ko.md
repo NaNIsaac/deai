@@ -42,7 +42,24 @@ AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
 ```
 
 ## 설치
-Python 3.10 이상과 git이 필요합니다.
+
+한 줄이면 됩니다. 미리 설치할 것은 없습니다. 스크립트가 [uv](https://docs.astral.sh/uv/)가 없으면
+설치하고, Python은 uv가 받아 옵니다. Windows(cmd 또는 PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/deai/main/install.ps1 | iex"
+```
+
+macOS, Linux:
+
+```sh
+curl -LsSf https://raw.githubusercontent.com/NaNIsaac/deai/main/install.sh | sh
+```
+
+`uv tool install git-deai` 명령을 실행하고 uv의 명령 폴더를 새 터미널의 `PATH`에 넣습니다.
+같은 줄을 다시 실행하면 업데이트됩니다.
+
+deai는 git이 필요합니다. 직접 설치하려면 Python 3.10 이상도 필요합니다. uv로는:
 Termux는 CI에서 테스트합니다.
 
 <!-- test -->
