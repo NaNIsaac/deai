@@ -1,0 +1,21 @@
+name: Publish legacy package
+
+on:
+  push:
+    tags:
+      - 'git-deai-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv build --project legacy/git-deai --out-dir legacy-dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: legacy-dist/
