@@ -1,15 +1,19 @@
-# deai
+# uncredit
 
-[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+Formerly git-deai.
 
-<img src="https://raw.githubusercontent.com/NaNIsaac/deai/main/docs/media/demo.gif" width="720" alt="deai scan finds two commits with AI credits, deai clean rewrites them after a y/N prompt, and git log shows the human co-author kept">
+The `deai` command remains for one release and prints `deai is now uncredit` before running.
+
+[![PyPI](https://img.shields.io/pypi/v/uncredit)](https://pypi.org/project/uncredit/) [![Tests](https://github.com/NaNIsaac/uncredit/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/uncredit/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+<img src="https://raw.githubusercontent.com/NaNIsaac/uncredit/main/docs/media/demo.gif" width="720" alt="uncredit scan finds two commits with AI credits, uncredit clean rewrites them after a y/N prompt, and git log shows the human co-author kept">
 
 **Remove AI co-author credits from your git history. Human co-authors and file contents stay as they are.**
 
 [한국어](README.ko.md)
 
 AI coding tools append `Co-Authored-By: Claude <noreply@anthropic.com>` and similar lines to commit
-messages. GitHub reads them and lists the tool under your repository's **Contributors**. `deai` finds
+messages. GitHub reads them and lists the tool under your repository's **Contributors**. `uncredit` finds
 these credits across your repositories, backs up, and rewrites the messages. Nothing is pushed unless
 you ask.
 
@@ -25,7 +29,7 @@ c72d54a docs: update README
         Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-After `deai clean`:
+After `uncredit clean`:
 
 ```
 c70f42d docs: update README
@@ -37,7 +41,7 @@ c70f42d docs: update README
 Try it on your own repositories. `scan` only reads:
 
 ```console
-$ uvx --from git-deai deai scan -r ~/code
+$ uvx --from uncredit uncredit scan -r ~/code
 AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
             trailer: c72d54a 049c5fb
 ```
@@ -48,41 +52,41 @@ One line, nothing needed beforehand: the script installs [uv](https://docs.astra
 missing, and uv fetches a Python. Windows (cmd or PowerShell):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/deai/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/uncredit/main/install.ps1 | iex"
 ```
 
 macOS and Linux:
 
 ```sh
-curl -LsSf https://raw.githubusercontent.com/NaNIsaac/deai/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/NaNIsaac/uncredit/main/install.sh | sh
 ```
 
-It runs `uv tool install git-deai` and puts uv's command folder on `PATH` for new terminals.
+It runs `uv tool install uncredit` and puts uv's command folder on `PATH` for new terminals.
 Run the same line again to update.
 
-deai needs git. By hand, it needs Python 3.10+ too; with uv:
+uncredit needs git. By hand, it needs Python 3.10+ too; with uv:
 Termux is tested in CI.
 
 <!-- test -->
 ```bash
-uv tool install git-deai
+uv tool install uncredit
 ```
 
 Check that the command works:
 
 <!-- test -->
 ```bash
-deai scan --help
+uncredit scan --help
 ```
 
 Other ways to install:
 
 ```bash
-pip install git-deai
+pip install uncredit
 ```
 
 ```bash
-pipx install git-deai
+pipx install uncredit
 ```
 
 ```bash
@@ -90,17 +94,17 @@ pipx install git-deai
 uv tool install -e .
 ```
 
-The package is `git-deai`; the command it installs is `deai`.
-To try it without installing: `uvx --from git-deai deai --help`.
+The package is `uncredit`; the command it installs is `uncredit`.
+To try it without installing: `uvx --from uncredit uncredit --help`.
 
 ## Usage
 
 **1. Scan (read-only).** Scanning only reports; it changes nothing.
 
 ```bash
-deai scan                          # the repository in the current directory
-deai scan path/to/repo             # one repository
-deai scan -r ~/code                # every repository under a folder
+uncredit scan                          # the repository in the current directory
+uncredit scan path/to/repo             # one repository
+uncredit scan -r ~/code                # every repository under a folder
 ```
 
 ```
@@ -120,9 +124,9 @@ AI credits  /home/me/code/my-app  (96 commits; trailers 51, AI author/committer 
 **2. Clean (rewrites history).**
 
 ```bash
-deai clean path/to/repo            # shows the scan, asks y/N, backs up, rewrites
-deai clean -r ~/code               # every repository found (shared ones skipped)
-deai clean -r ~/code --yes --push  # no question; force-push afterwards
+uncredit clean path/to/repo            # shows the scan, asks y/N, backs up, rewrites
+uncredit clean -r ~/code               # every repository found (shared ones skipped)
+uncredit clean -r ~/code --yes --push  # no question; force-push afterwards
 ```
 
 **3. Publish.** Without `--push`, nothing leaves your machine. When you are happy with the result,
@@ -153,10 +157,10 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
 
 ## Safety
 - **A clean worktree is required.** `clean` refuses to run if tracked files have uncommitted changes.
-- **A backup is made first.** Every branch and tag is saved to `.git/deai-backup-<time>.bundle`.
+- **A backup is made first.** Every branch and tag is saved to `.git/uncredit-backup-<time>.bundle`.
   To restore it:
   ```bash
-  git fetch --force .git/deai-backup-20261014-222005.bundle 'refs/*:refs/*'
+  git fetch --force .git/uncredit-backup-20261014-222005.bundle 'refs/*:refs/*'
   ```
 - **Pushes never lose remote commits.** `--push` fetches first.
   - A local branch that is behind its remote is fast-forwarded before the rewrite.
@@ -164,7 +168,7 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
     matches a rewritten commit to its original). If the remote has nothing the branch lacks, the
     branch is pushed. If the branch has nothing the remote lacks (the remote was cleaned from
     another machine), the branch is moved to the remote's history. If both sides have new work,
-    deai stops and tells you to `git rebase` onto the remote.
+    uncredit stops and tells you to `git rebase` onto the remote.
   - Each branch is force-pushed with an explicit lease on the commit seen at fetch time.
   - Only branches with an upstream are pushed; local-only branches stay local.
   - Only remote tags that the rewrite cleaned are pushed, each with a lease on the tag seen at
@@ -196,7 +200,7 @@ byte-identical to the original.
 
 ## Test
 ```bash
-python tests/test_deai.py
+python tests/test_uncredit.py
 ```
 
 ## License

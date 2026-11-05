@@ -1,10 +1,10 @@
-"""Create the throwaway repository that docs/media/demo.tape runs deai on.
+"""Create the throwaway repository that docs/media/demo.tape runs uncredit on.
 
 uv run python docs/media/demo_repo.py DIR
 
 The three commits match the README's "Before" example. Names, e-mails and dates are fixed so the
 commit hashes are the same on every run. The global git config is left out, as in
-tests/test_deai.py, because a global commit-msg hook may strip the very trailers this commits.
+tests/test_uncredit.py, because a global commit-msg hook may strip the very trailers this commits.
 """
 
 import os

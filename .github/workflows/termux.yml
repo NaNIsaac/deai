@@ -1,6 +1,6 @@
 name: Termux
 
-# termux-docker has no Android runtime, which deai does not need; it covers the bionic libc and $PREFIX layout.
+# termux-docker has no Android runtime, which uncredit does not need; it covers the bionic libc and $PREFIX layout.
 on:
   push:
     branches: [main]
@@ -18,9 +18,9 @@ jobs:
           docker run --rm --privileged -v "$PWD:/src:ro" termux/termux-docker:aarch64 bash -euc '
             yes | pkg upgrade -y >/dev/null
             pkg install -y python git >/dev/null
-            cp -r /src "$HOME/deai"
-            cd "$HOME/deai"
+            cp -r /src "$HOME/uncredit"
+            cd "$HOME/uncredit"
             pip install pytest . >/dev/null
             pytest -q
-            deai --help >/dev/null
+            uncredit --help >/dev/null
           '

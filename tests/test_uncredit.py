@@ -1,4 +1,4 @@
-"""End-to-end check on a throwaway repository: python tests/test_deai.py (or pytest)."""
+"""End-to-end check on a throwaway repository: python tests/test_uncredit.py (or pytest)."""
 
 import os
 import subprocess
@@ -7,8 +7,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from deai import cli  # noqa: E402
-from deai.cli import clean, clean_message, main, scan, unpushed  # noqa: E402
+from uncredit import cli  # noqa: E402
+from uncredit.cli import clean, clean_message, main, scan, unpushed  # noqa: E402
 
 # A global commit-msg hook may strip the very trailers these tests commit.
 os.environ["GIT_CONFIG_GLOBAL"] = os.devnull
@@ -39,6 +39,17 @@ def test_messages():
     assert clean_message(human) == human  # "generated with" alone is not an AI credit
 
 
+def test_legacy_command_notices_and_runs_the_same_command(capsys):
+    import pytest
+
+    with pytest.raises(SystemExit) as result:
+        cli.legacy_main(["scan", "--help"])
+    captured = capsys.readouterr()
+    assert result.value.code == 0
+    assert captured.err == "deai is now uncredit\n"
+    assert "uncredit scan" in captured.out
+
+
 def test_rewrite():
     with tempfile.TemporaryDirectory() as d:
         repo = Path(d)
@@ -66,7 +77,7 @@ def test_rewrite():
         assert "Jane Doe" in log  # human co-author kept
         assert git(repo, "rev-parse", "HEAD^{tree}") == tree  # content untouched
         assert git(repo, "rev-parse", "v1") == git(repo, "rev-parse", "HEAD")  # tag moved along
-        assert list((repo / ".git").glob("deai-backup-*.bundle"))
+        assert list((repo / ".git").glob("uncredit-backup-*.bundle"))
         assert not git(repo, "status", "--porcelain")
 
 
@@ -143,7 +154,7 @@ def test_stale_clone_follows_cleaned_remote():
         head = git(remote, "rev-parse", "main")
         assert clean(b, None, push=True) == 0  # b only has the old copy of "one"
         assert git(b, "rev-parse", "main") == head == git(remote, "rev-parse", "main")
-        assert list((b / ".git").glob("deai-backup-*.bundle"))
+        assert list((b / ".git").glob("uncredit-backup-*.bundle"))
 
 
 def test_work_on_both_sides_stops():
@@ -242,7 +253,7 @@ def test_backup_bundle_can_restore_original_refs():
         assert clean(repo, None, push=False) == 1
         assert git(repo, "rev-parse", "HEAD") != original_head
 
-        backups = list((repo / ".git").glob("deai-backup-*.bundle"))
+        backups = list((repo / ".git").glob("uncredit-backup-*.bundle"))
         assert len(backups) == 1
         restored = root / "restored"
         subprocess.run(
@@ -280,7 +291,7 @@ def _refuses(repo, **kwargs):
     else:
         raise AssertionError("clean should have refused")
     assert git(repo, "rev-parse", "HEAD") == head  # history untouched
-    assert not list((repo / ".git").glob("deai-backup-*.bundle"))  # nothing was rewritten
+    assert not list((repo / ".git").glob("uncredit-backup-*.bundle"))  # nothing was rewritten
     return message
 
 
@@ -311,7 +322,7 @@ if __name__ == "__main__":
     test_tag_moved_after_fetch_is_not_overwritten()
     test_clean_refuses_uncommitted_changes()
     test_clean_refuses_bad_identity()
-    print("deai: all checks passed")
+    print("uncredit: all checks passed")
 
 
 def test_recursive_scan_skips_invalid_git_metadata():

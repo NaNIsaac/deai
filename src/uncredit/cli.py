@@ -1,11 +1,11 @@
-"""deai: find and remove AI co-author credits from git history.
+"""uncredit: find and remove AI co-author credits from git history.
 
 AI coding tools append trailers such as ``Co-Authored-By: Claude <noreply@anthropic.com>``
 to commit messages. GitHub reads those trailers and lists the tool as a contributor.
-deai finds them, and on request rewrites the history without them.
+uncredit finds them, and on request rewrites the history without them.
 
-    deai scan [PATH ...] [-r]       report, change nothing
-    deai clean [PATH ...] [-r] [--yes] [--push]
+    uncredit scan [PATH ...] [-r]       report, change nothing
+    uncredit clean [PATH ...] [-r] [--yes] [--push]
 
 What ``clean`` removes from every commit message:
 - ``Co-authored-by:`` trailers whose name or e-mail matches a known AI tool;
@@ -15,7 +15,7 @@ to the repository's ``git config user.name / user.email`` (or ``--as``).
 
 Safety:
 - the worktree must have no uncommitted changes to tracked files;
-- a full backup bundle is written to ``.git/deai-backup-<time>.bundle`` first;
+- a full backup bundle is written to ``.git/uncredit-backup-<time>.bundle`` first;
 - only local branches and tags are rewritten. Remote-tracking refs keep the old history,
   so ``--push`` can use ``--force-with-lease`` against what the remote really has;
 - ``--push`` only pushes remote tags whose old history this run cleaned, each with a lease on
@@ -64,9 +64,6 @@ def clean_message(msg: str) -> str:
     while kept and not kept[-1].strip():  # the trailer block often leaves a blank tail
         kept.pop()
     return "\n".join(kept) + ("\n" if msg.endswith("\n") or kept else "")
-
-
-# ───────────── git plumbing ─────────────
 
 
 def git(repo: Path, *args: str, check: bool = True) -> str:
@@ -173,9 +170,6 @@ def clean_message_noop(msg: str) -> str:
     return "\n".join(kept) + ("\n" if msg.endswith("\n") or kept else "")
 
 
-# ───────────── rewrite ─────────────
-
-
 def rewrite_stream(src, dst, ident: bytes) -> int:
     """Copy a ``git fast-export`` stream, cleaning commit messages and AI identities.
 
@@ -240,7 +234,7 @@ def is_ancestor(repo: Path, a: str, b: str) -> bool:
 def unique(repo: Path, base: str, head: str) -> int:
     """Commits in ``head`` whose change is not in ``base`` under any hash (``git cherry``).
 
-    deai only edits messages, so a rewritten commit matches its original here.
+    uncredit only edits messages, so a rewritten commit matches its original here.
     """
     return sum(line.startswith("+") for line in git(repo, "cherry", base, head).splitlines())
 
@@ -269,7 +263,7 @@ def unpushed(repo: Path) -> list[str]:
 
 
 def backup(repo: Path) -> Path:
-    path = repo / ".git" / f"deai-backup-{time.strftime('%Y%m%d-%H%M%S')}.bundle"
+    path = repo / ".git" / f"uncredit-backup-{time.strftime('%Y%m%d-%H%M%S')}.bundle"
     if not path.exists():
         git(repo, "bundle", "create", str(path), "--branches", "--tags")
     return path
@@ -304,7 +298,7 @@ def sync_with_remote(repo: Path) -> list[Tracked]:
                 f"branch {t.branch} has diverged from {up}: {mine} commit(s) only here, "
                 f"{theirs} only on the remote. Put yours on top of the remote with "
                 f"`git rebase {up}` (commits the remote already has in rewritten form are "
-                f"dropped), then run deai again. Do not `git pull` or merge: that brings the old "
+                f"dropped), then run uncredit again. Do not `git pull` or merge: that brings the old "
                 f"history back."
             )
         print(f"  backup: {backup(repo)}")
@@ -429,11 +423,8 @@ def publish(repo: Path) -> None:
     push_rewritten(repo, tracked, remote_tags(repo, tracked))
 
 
-# ───────────── CLI ─────────────
-
-
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="deai", description=(__doc__ or "").split("\n\n")[0])
+    ap = argparse.ArgumentParser(prog="uncredit", description=(__doc__ or "").split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name, help_ in (
         ("scan", "report AI credits, change nothing"),
@@ -507,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         if any(pending.values()):
             print(
-                "\n'unpushed': the remote still has the AI credits. Publish with `deai clean --push`; "
+                "\n'unpushed': the remote still has the AI credits. Publish with `uncredit clean --push`; "
                 "do not `git pull`, which merges the old history back in."
             )
         return 0
@@ -549,6 +540,11 @@ def main(argv: list[str] | None = None) -> int:
             failed += 1
             print(f"  error: {e}", file=sys.stderr)
     return 1 if failed else 0
+
+
+def legacy_main(argv: list[str] | None = None) -> int:
+    print("deai is now uncredit", file=sys.stderr)
+    return main(argv)
 
 
 if __name__ == "__main__":

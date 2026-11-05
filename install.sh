@@ -1,12 +1,12 @@
 #!/bin/sh
-# Installs deai (the git-deai package) as a command with uv, installing uv first if it is missing.
+# Installs uncredit (the uncredit package) as a command with uv, installing uv first if it is missing.
 #
-#   curl -LsSf https://raw.githubusercontent.com/NaNIsaac/deai/main/install.sh | sh
+#   curl -LsSf https://raw.githubusercontent.com/NaNIsaac/uncredit/main/install.sh | sh
 #
 # Run it again to update. uv's own settings apply, e.g. UV_TOOL_BIN_DIR for where the command goes.
 set -eu
 
-cli=deai
+cli=uncredit
 
 if ! command -v uv >/dev/null 2>&1; then
     echo "Installing uv (https://docs.astral.sh/uv/)"
@@ -23,7 +23,7 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 # From PyPI.
-uv tool install --upgrade git-deai
+uv tool install --upgrade uncredit
 # Puts uv's command folder on PATH in the shell profiles for new terminals; does nothing if it is there.
 uv tool update-shell
 echo "Installed $cli to $(uv tool dir --bin). Next (in a new terminal): $cli --help"
