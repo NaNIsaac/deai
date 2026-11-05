@@ -98,6 +98,13 @@ uv tool install -e .
 
 ## 사용법
 
+`uncredit scan https://github.com/example/project` 또는 `uncredit scan example/project`로
+원격 기록을 확인할 수 있습니다. 임시 bare partial clone을 사용하며 파일을 checkout하지 않습니다.
+비공개 저장소는 기존 git 인증을 사용합니다. 성공·실패·Ctrl-C 뒤 임시 clone을 지웁니다.
+`uncredit scan --github example`은 인증된 gh로 저장소 목록을 받아 진행 상황을 표시합니다.
+fork와 archived 저장소는 기본으로 제외하며 `--include-forks`, `--include-archived`로 포함합니다.
+`clean`에 원격 주소를 주면 실행하지 않고 clone·로컬 clean·lease를 사용하는 push 명령만 출력합니다.
+
 **1. 점검 (읽기만 함).** 결과만 보여주고 아무것도 바꾸지 않습니다.
 
 ```bash

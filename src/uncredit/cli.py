@@ -38,6 +38,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import remotes
+
 AI = re.compile(
     r"claude|anthropic|copilot|cursor(agent)?\b|chatgpt|openai|\bcodex\b|gemini|\bdevin\b|"
     r"\baider\b|codeium|windsurf|tabnine|codewhisperer|amazon q\b|\bjules\b|sweep-?ai",
@@ -137,7 +139,7 @@ def scan(repo: Path, me: list[str] | None = None) -> Report:
     """Flag commits with AI credits. A flagged commit by another human means shared history
     (a fork, a vendored project): rewriting it would split you from upstream."""
     r = Report(repo)
-    if not git(repo, "rev-parse", "--verify", "-q", "HEAD", check=False).strip():
+    if not git(repo, "for-each-ref", "--format=%(refname)", "refs/heads", "refs/tags").strip():
         return r  # empty repository
     mine = my_emails(repo, me or [])
     log = git(
@@ -423,6 +425,24 @@ def publish(repo: Path) -> None:
     push_rewritten(repo, tracked, remote_tags(repo, tracked))
 
 
+def show_report(rp: Report, pending: list[str], label: str | None = None) -> None:
+    mark = (
+        "shared" if rp.others else "AI credits" if rp.dirty else "unpushed" if pending else "clean"
+    )
+    print(
+        f"{mark:>10}  {label or rp.repo}  ({rp.commits} commits; trailers {len(rp.trailers)}, "
+        f"AI author/committer {len(rp.idents)})"
+    )
+    for kind, hs in (("trailer", rp.trailers), ("identity", rp.idents)):
+        if hs:
+            print(f"            {kind}: {' '.join(hs[:8])}{' ...' if len(hs) > 8 else ''}")
+    if rp.others:
+        names = sorted(rp.others)
+        print(f"            by others: {', '.join(names[:4])}{' ...' if len(names) > 4 else ''}")
+    if pending:
+        print(f"            cleaned here, not pushed: {', '.join(pending)}")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="uncredit", description=(__doc__ or "").split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -442,6 +462,16 @@ def main(argv: list[str] | None = None) -> int:
             metavar="EMAIL",
             help="another e-mail of yours (repeatable; git config user.email is always included)",
         )
+    remote = sub.choices["scan"]
+    remote.add_argument(
+        "--github", metavar="OWNER", help="scan repositories of a GitHub user or organization"
+    )
+    remote.add_argument("--include-forks", action="store_true", help="include forks with --github")
+    remote.add_argument(
+        "--include-archived",
+        action="store_true",
+        help="include archived repositories with --github",
+    )
     c = sub.choices["clean"]
     c.add_argument("--yes", action="store_true", help="do not ask before rewriting")
     c.add_argument(
@@ -460,36 +490,56 @@ def main(argv: list[str] | None = None) -> int:
     )
     a = ap.parse_args(argv)
 
-    repos = find_repos(a.paths, a.recursive)
+    urls, local_paths = [], []
+    for path in a.paths:
+        url = remotes.remote_url(path)
+        if url is None:
+            local_paths.append(path)
+        else:
+            urls.append(url)
+    if a.cmd == "scan" and a.github:
+        if a.paths:
+            ap.error("--github cannot be combined with repository paths")
+        try:
+            urls = remotes.github_repos(a.github, a.include_forks, a.include_archived)
+        except RuntimeError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        if not urls:
+            print("no repositories matched")
+            return 0
+    failed_remote = 0
+    if a.cmd == "scan":
+        for index, url in enumerate(urls, 1):
+            print(f"[{index}/{len(urls)}] scanning {url}", file=sys.stderr)
+            try:
+                with remotes.clone(url) as repo:
+                    show_report(scan(repo, a.me), [], url)
+            except RuntimeError as exc:
+                failed_remote += 1
+                print(f"error: {url}: {exc}", file=sys.stderr)
+    else:
+        options = []
+        if a.yes:
+            options.append("--yes")
+        if a.as_ident:
+            options += ["--as", a.as_ident]
+        if a.include_shared:
+            options.append("--include-shared")
+        for email in a.me:
+            options += ["--me", email]
+        for url in urls:
+            remotes.instructions(url, options)
+    if urls and not local_paths:
+        return int(bool(failed_remote))
+    repos = find_repos(local_paths, a.recursive)
     if not repos:
         print("no repositories found", file=sys.stderr)
         return 1
     reports = [scan(r, a.me) for r in repos]
     pending = {rp.repo: unpushed(rp.repo) for rp in reports if not rp.dirty}
     for rp in reports:
-        mark = (
-            "shared"
-            if rp.others
-            else "AI credits"
-            if rp.dirty
-            else "unpushed"
-            if pending[rp.repo]
-            else "clean"
-        )
-        print(
-            f"{mark:>10}  {rp.repo}  ({rp.commits} commits; trailers {len(rp.trailers)}, "
-            f"AI author/committer {len(rp.idents)})"
-        )
-        for kind, hs in (("trailer", rp.trailers), ("identity", rp.idents)):
-            if hs:
-                print(f"            {kind}: {' '.join(hs[:8])}{' ...' if len(hs) > 8 else ''}")
-        if rp.others:
-            names = sorted(rp.others)
-            print(
-                f"            by others: {', '.join(names[:4])}{' ...' if len(names) > 4 else ''}"
-            )
-        if pending.get(rp.repo):
-            print(f"            cleaned here, not pushed: {', '.join(pending[rp.repo])}")
+        show_report(rp, pending.get(rp.repo, []))
     if a.cmd == "scan":
         if any(rp.others for rp in reports):
             print(
@@ -501,7 +551,7 @@ def main(argv: list[str] | None = None) -> int:
                 "\n'unpushed': the remote still has the AI credits. Publish with `uncredit clean --push`; "
                 "do not `git pull`, which merges the old history back in."
             )
-        return 0
+        return int(bool(failed_remote))
 
     todo = [rp for rp in reports if rp.dirty and (a.include_shared or not rp.others)]
     to_publish = [r for r, branches in pending.items() if branches] if a.push else []

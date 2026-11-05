@@ -99,6 +99,17 @@ To try it without installing: `uvx --from uncredit uncredit --help`.
 
 ## Usage
 
+`uncredit scan https://github.com/example/project` and `uncredit scan example/project`
+scan a disposable bare partial clone without checking out files. Private repositories use
+your existing git credentials. Clone failures report authentication or URL problems; no token
+or login file is read by uncredit.
+
+`uncredit scan --github example` lists repositories through your authenticated `gh` CLI and
+shows progress as each is scanned. Forks and archived repositories are skipped unless
+`--include-forks` or `--include-archived` is given. Temporary clones are removed on success,
+failure and Ctrl-C. `clean` accepts local repositories only: a remote URL or owner/repo prints
+the exact clone, local clean and leased-push commands without running them.
+
 **1. Scan (read-only).** Scanning only reports; it changes nothing.
 
 ```bash
