@@ -14,10 +14,10 @@ Enter
 Sleep 4s
 Show
 
-Type "deai scan"
+Type "uncredit scan"
 Enter
 Sleep 1.5s
-Type "deai clean"
+Type "uncredit clean"
 Enter
 Sleep 1s
 Type "y"

@@ -1,9 +1,12 @@
 name: Publish to PyPI
 
+# v* tags publish uncredit; git-deai-v* tags publish the git-deai transition package from
+# legacy/git-deai. One workflow, so one trusted publisher entry per PyPI project.
 on:
   push:
     tags:
       - 'v*'
+      - 'git-deai-v*'
 
 jobs:
   publish:
@@ -15,5 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.0
-      - run: uv build
+      - if: startsWith(github.ref_name, 'v')
+        run: uv build --out-dir dist
+      - if: startsWith(github.ref_name, 'git-deai-v')
+        run: uv build --project legacy/git-deai --out-dir dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

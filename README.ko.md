@@ -1,15 +1,19 @@
-# deai
+# uncredit
 
-[![PyPI](https://img.shields.io/pypi/v/git-deai)](https://pypi.org/project/git-deai/) [![Tests](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/deai/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+Formerly git-deai.
 
-<img src="https://raw.githubusercontent.com/NaNIsaac/deai/main/docs/media/demo.gif" width="720" alt="deai scan이 AI 크레딧이 있는 커밋 두 개를 찾고, deai clean이 y/N 확인 뒤 다시 쓰며, git log에는 사람 공동 저자만 남는다">
+`deai` 명령은 한 릴리스 동안 유지되며 `deai is now uncredit`를 출력한 뒤 같은 명령을 실행합니다.
+
+[![PyPI](https://img.shields.io/pypi/v/uncredit)](https://pypi.org/project/uncredit/) [![Tests](https://github.com/NaNIsaac/uncredit/actions/workflows/ci.yml/badge.svg)](https://github.com/NaNIsaac/uncredit/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+<img src="https://raw.githubusercontent.com/NaNIsaac/uncredit/main/docs/media/demo.gif" width="720" alt="uncredit scan이 AI 크레딧이 있는 커밋 두 개를 찾고, uncredit clean이 y/N 확인 뒤 다시 쓰며, git log에는 사람 공동 저자만 남는다">
 
 **git 기록에서 AI 공동저자 표시를 지웁니다. 사람 공동저자와 파일 내용은 그대로 둡니다.**
 
 [English](README.md)
 
 AI 코딩 도구는 커밋 메시지 끝에 `Co-Authored-By: Claude <noreply@anthropic.com>` 같은 줄을 붙입니다.
-GitHub는 이 줄을 읽어서 저장소의 **Contributors** 목록에 그 도구를 올립니다. `deai`는 내 저장소 전체에서
+GitHub는 이 줄을 읽어서 저장소의 **Contributors** 목록에 그 도구를 올립니다. `uncredit`는 내 저장소 전체에서
 이런 표시를 찾아 백업한 뒤 커밋 메시지를 다시 씁니다. 요청하지 않으면 아무것도 push하지 않습니다.
 
 전:
@@ -24,7 +28,7 @@ c72d54a docs: update README
         Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-`deai clean` 후:
+`uncredit clean` 후:
 
 ```
 c70f42d docs: update README
@@ -36,7 +40,7 @@ c70f42d docs: update README
 내 저장소에서 바로 확인해 보세요. `scan`은 읽기만 합니다.
 
 ```console
-$ uvx --from git-deai deai scan -r ~/code
+$ uvx --from uncredit uncredit scan -r ~/code
 AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
             trailer: c72d54a 049c5fb
 ```
@@ -47,41 +51,41 @@ AI credits  ~/code/my-app  (3 commits; trailers 2, AI author/committer 0)
 설치하고, Python은 uv가 받아 옵니다. Windows(cmd 또는 PowerShell):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/deai/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/uncredit/main/install.ps1 | iex"
 ```
 
 macOS, Linux:
 
 ```sh
-curl -LsSf https://raw.githubusercontent.com/NaNIsaac/deai/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/NaNIsaac/uncredit/main/install.sh | sh
 ```
 
-`uv tool install git-deai` 명령을 실행하고 uv의 명령 폴더를 새 터미널의 `PATH`에 넣습니다.
+`uv tool install uncredit` 명령을 실행하고 uv의 명령 폴더를 새 터미널의 `PATH`에 넣습니다.
 같은 줄을 다시 실행하면 업데이트됩니다.
 
-deai는 git이 필요합니다. 직접 설치하려면 Python 3.10 이상도 필요합니다. uv로는:
+uncredit는 git이 필요합니다. 직접 설치하려면 Python 3.10 이상도 필요합니다. uv로는:
 Termux는 CI에서 테스트합니다.
 
 <!-- test -->
 ```bash
-uv tool install git-deai
+uv tool install uncredit
 ```
 
 설치한 명령어가 동작하는지 확인합니다.
 
 <!-- test -->
 ```bash
-deai scan --help
+uncredit scan --help
 ```
 
 다른 설치 방법:
 
 ```bash
-pip install git-deai
+pip install uncredit
 ```
 
 ```bash
-pipx install git-deai
+pipx install uncredit
 ```
 
 ```bash
@@ -89,17 +93,24 @@ pipx install git-deai
 uv tool install -e .
 ```
 
-패키지 이름은 `git-deai`이고, 설치되는 명령어는 `deai`입니다.
-설치 없이 써 보려면: `uvx --from git-deai deai --help`
+패키지 이름은 `uncredit`이고, 설치되는 명령어는 `uncredit`입니다.
+설치 없이 써 보려면: `uvx --from uncredit uncredit --help`
 
 ## 사용법
+
+`uncredit scan https://github.com/example/project` 또는 `uncredit scan example/project`로
+원격 기록을 확인할 수 있습니다. 임시 bare partial clone을 사용하며 파일을 checkout하지 않습니다.
+비공개 저장소는 기존 git 인증을 사용합니다. 성공·실패·Ctrl-C 뒤 임시 clone을 지웁니다.
+`uncredit scan --github example`은 인증된 gh로 저장소 목록을 받아 진행 상황을 표시합니다.
+fork와 archived 저장소는 기본으로 제외하며 `--include-forks`, `--include-archived`로 포함합니다.
+`clean`에 원격 주소를 주면 실행하지 않고 clone·로컬 clean·lease를 사용하는 push 명령만 출력합니다.
 
 **1. 점검 (읽기만 함).** 결과만 보여주고 아무것도 바꾸지 않습니다.
 
 ```bash
-deai scan                          # 현재 폴더의 저장소
-deai scan 경로/저장소               # 저장소 하나
-deai scan -r ~/code                # 폴더 아래 모든 저장소
+uncredit scan                          # 현재 폴더의 저장소
+uncredit scan 경로/저장소               # 저장소 하나
+uncredit scan -r ~/code                # 폴더 아래 모든 저장소
 ```
 
 ```
@@ -119,9 +130,9 @@ AI credits  /home/me/code/my-app  (96 commits; trailers 51, AI author/committer 
 **2. 정리 (기록을 다시 씀).**
 
 ```bash
-deai clean 경로/저장소              # 점검 결과 → y/N 확인 → 백업 → 다시 쓰기
-deai clean -r ~/code               # 찾은 저장소 전부 (shared는 제외)
-deai clean -r ~/code --yes --push  # 확인 없이, 끝나면 force-push까지
+uncredit clean 경로/저장소              # 점검 결과 → y/N 확인 → 백업 → 다시 쓰기
+uncredit clean -r ~/code               # 찾은 저장소 전부 (shared는 제외)
+uncredit clean -r ~/code --yes --push  # 확인 없이, 끝나면 force-push까지
 ```
 
 **3. GitHub에 반영.** `--push`를 붙이지 않으면 내 컴퓨터 밖으로 아무것도 나가지 않습니다. 결과를 확인한 뒤
@@ -152,9 +163,9 @@ Codeium/Windsurf, Tabnine, CodeWhisperer/Amazon Q, Jules, Sweep.
 
 ## 안전장치
 - **커밋 안 한 변경이 있으면 실행하지 않습니다.**
-- **먼저 백업합니다.** 모든 브랜치와 태그를 `.git/deai-backup-<시각>.bundle`로 저장합니다. 되돌리려면:
+- **먼저 백업합니다.** 모든 브랜치와 태그를 `.git/uncredit-backup-<시각>.bundle`로 저장합니다. 되돌리려면:
   ```bash
-  git fetch --force .git/deai-backup-20261014-222005.bundle 'refs/*:refs/*'
+  git fetch --force .git/uncredit-backup-20261014-222005.bundle 'refs/*:refs/*'
   ```
 - **원격 커밋을 잃지 않습니다.** `--push`를 붙이면 먼저 fetch합니다.
   - 원격보다 뒤처진 로컬 브랜치는 먼저 fast-forward합니다.
@@ -188,7 +199,7 @@ AI 도구에서 공동저자 표시를 끄세요. Claude Code라면 `~/.claude/s
 
 ## 테스트
 ```bash
-python tests/test_deai.py
+python tests/test_uncredit.py
 ```
 
 ## 라이선스

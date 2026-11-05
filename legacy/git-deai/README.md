@@ -1,0 +1,1 @@
+git-deai has moved to [uncredit](https://pypi.org/project/uncredit/). Install uncredit for the current command; this compatibility package keeps the deai command, prints “deai is now uncredit” and delegates to uncredit.

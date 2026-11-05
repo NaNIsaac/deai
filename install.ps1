@@ -1,6 +1,6 @@
-# Installs deai (the git-deai package) as a command with uv, installing uv first if it is missing.
+# Installs uncredit (the uncredit package) as a command with uv, installing uv first if it is missing.
 #
-#   powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/deai/main/install.ps1 | iex"
+#   powershell -ExecutionPolicy Bypass -c "irm -useb https://raw.githubusercontent.com/NaNIsaac/uncredit/main/install.ps1 | iex"
 #
 # Run it again to update. uv's own settings apply, e.g. UV_TOOL_BIN_DIR for where the command goes.
 # irm | iex runs this in your shell's scope; the script block keeps its settings and variables
@@ -11,8 +11,8 @@
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
     # From PyPI.
-    $install = '--upgrade', 'git-deai'
-    $cli = 'deai'
+    $install = '--upgrade', 'uncredit'
+    $cli = 'uncredit'
 
     if (-not (Get-Command uv -CommandType Application -ErrorAction SilentlyContinue)) {
         Write-Host 'Installing uv (https://docs.astral.sh/uv/)'
